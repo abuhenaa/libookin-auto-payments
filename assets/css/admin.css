@@ -1,0 +1,69 @@
+/**
+ * Admin styles for Libookin Auto Payments
+ */
+
+.libookin-admin-dashboard {
+    max-width: 1200px;
+}
+
+.payout-overview {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.payout-overview h2 {
+    margin-top: 0;
+    color: #1d2327;
+}
+
+.payout-overview p {
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+#trigger-manual-payout {
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
+/* Settings page styles */
+.form-table th {
+    width: 200px;
+}
+
+.form-table input[type="text"],
+.form-table input[type="password"] {
+    width: 400px;
+}
+
+/* Status indicators */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background: #fef7e0;
+    color: #8b5a00;
+}
+
+.status-paid {
+    background: #e6f7e6;
+    color: #0f5132;
+}
+
+.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-processing {
+    background: #cce5ff;
+    color: #004085;
+}
