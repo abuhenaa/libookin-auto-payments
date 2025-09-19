@@ -14,23 +14,20 @@
             button.prop('disabled', true).text('Creating account...');
             
             $.ajax({
-                url: libookin_ajax.ajax_url,
+                url: libookinAutoPayments.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'create_stripe_connect_account',
-                    vendor_id: libookin_ajax.user_id,
-                    nonce: libookin_ajax.nonce
+                    vendor_id: libookinAutoPayments.user_id,
+                    nonce: libookinAutoPayments.nonce
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert('Stripe Connect account created successfully! Please refresh the page.');
-                        location.reload();
-                    } else {
-                        alert('Error: ' + response.data);
+                        window.location.href = response.data.onboarding_link;
                     }
                 },
-                error: function() {
-                    alert('An error occurred while creating the account.');
+                error: function(response) {
+                    console.log(response.data)
                 },
                 complete: function() {
                     button.prop('disabled', false).text('Setup Payment Account');
@@ -47,12 +44,12 @@
             button.prop('disabled', true).text('Refreshing...');
             
             $.ajax({
-                url: libookin_ajax.ajax_url,
+                url: libookinAutoPayments.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'get_stripe_account_status',
                     account_id: accountId,
-                    nonce: libookin_ajax.nonce
+                    nonce: libookinAutoPayments.nonce
                 },
                 success: function(response) {
                     if (response.success) {
@@ -79,11 +76,11 @@
 
         function refreshVendorBalance() {
             $.ajax({
-                url: libookin_ajax.ajax_url,
+                url: libookinAutoPayments.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'get_vendor_balance',
-                    nonce: libookin_ajax.nonce
+                    nonce: libookinAutoPayments.nonce
                 },
                 success: function(response) {
                     if (response.success) {

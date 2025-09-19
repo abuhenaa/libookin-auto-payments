@@ -75,9 +75,38 @@ function libookin_auto_payments_init() {
 	require_once LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR . 'includes/class-vendor-dashboard.php';
 	require_once LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR . 'includes/class-admin-interface.php';
 	require_once LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR . 'includes/class-email-notifications.php';
-
+	require_once LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR . 'functions.php';
+	//Query var support for dokan dashbaord
+	add_action( 'init', 'libookin_register_query_vars' );
+	//HPOS support for woocommerce
+	add_action( 'before_woocommerce_init', 'check_HPOS_compatibility' );
 	// Initialize the main plugin class
 	Libookin_Auto_Payments::get_instance();
+}
+
+/**
+ * Check HPOS compatibility
+ *
+ * @return void
+ */
+function check_HPOS_compatibility() {
+	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+			'custom_order_tables', // HPOS feature slug
+			LIBOOKIN_AUTO_PAYMENTS_PLUGIN_FILE,
+			true
+		);
+	}
+}
+
+/**
+ * Register custom query vars for Dokan dashboard
+ *
+ * @since 1.0.0
+ */
+function libookin_register_query_vars() {
+    add_rewrite_endpoint( 'royalties', EP_PAGES );
+    add_rewrite_endpoint( 'stripe-connect', EP_PAGES );
 }
 
 /**

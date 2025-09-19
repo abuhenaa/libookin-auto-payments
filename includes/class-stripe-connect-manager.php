@@ -82,6 +82,7 @@ class Libookin_Stripe_Connect_Manager {
 	 */
 	public function create_connect_account( $vendor_id, $country = 'FR', $email = '' ) {
 		if ( empty( $this->stripe_secret_key ) ) {
+			error_log( 'Stripe secret key is not configured.' );
 			return new WP_Error( 'stripe_not_configured', __( 'Stripe is not properly configured.', 'libookin-auto-payments' ) );
 		}
 
@@ -101,17 +102,19 @@ class Libookin_Stripe_Connect_Manager {
 		try {
 			$account = \Stripe\Account::create(
 				array(
-					'type'         => 'custom',
+					'type'         => 'express',
 					'country'      => $country,
 					'email'        => $email,
 					'capabilities' => array(
 						'transfers' => array( 'requested' => true ),
 					),
+					'tos_acceptance' => array(
+						'service_agreement' => 'recipient',
+					),
 					'business_type' => 'individual',
-					'metadata'     => array(
+					'metadata'      => array(
 						'vendor_id'   => $vendor_id,
-						'platform'    => 'libookin',
-						'created_by'  => 'auto_payments_plugin',
+						'platform'    => 'Libookin',
 					),
 				)
 			);
@@ -128,6 +131,35 @@ class Libookin_Stripe_Connect_Manager {
 			);
 
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
+			error_log( 'Stripe error: ' . $e->getMessage() );
+			return new WP_Error( 'stripe_error', $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Generate AccountLink for a vendor stripe connected account
+	 * 
+	 * @since 1.0.0
+	 */
+	public function create_express_account_onboarding_link( $account_id, $return_url, $refresh_url ){
+
+		try{
+			$link = \Stripe\AccountLink::create(
+				array(
+					'account' => $account_id,
+					'refresh_url' => $refresh_url,
+					'return_url' => $return_url,
+					'type' => 'account_onboarding',
+				)
+			);
+
+			return array(
+				'success' => true,
+				'onboarding_url' => $link->url,
+				'expires_at' => $link->expires_at,
+			);
+		} catch( \Stripe\Exception\ApiErrorException $e ){
+			error_log( 'Stripe error: ' . $e->getMessage() );
 			return new WP_Error( 'stripe_error', $e->getMessage() );
 		}
 	}
@@ -311,21 +343,37 @@ class Libookin_Stripe_Connect_Manager {
 	public function ajax_create_connect_account() {
 		check_ajax_referer( 'libookin_auto_payments_nonce', 'nonce' );
 
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'You do not have permission to perform this action.', 'libookin-auto-payments' ) );
+		if ( ! current_user_can( 'dokandar' ) ) {
+			wp_send_json_error( __( 'You do not have permission to perform this action.', 'libookin-auto-payments' ) );
 		}
 
-		$vendor_id = intval( $_POST['vendor_id'] ?? 0 );
+		$vendor_id = get_current_user_id();
 		$country   = sanitize_text_field( $_POST['country'] ?? 'FR' );
-		$email     = sanitize_email( $_POST['email'] ?? '' );
+		$email     = get_user_by( 'ID', $vendor_id )->user_email;
 
+		//Create connect account
 		$result = $this->create_connect_account( $vendor_id, $country, $email );
 
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( $result->get_error_message() );
 		}
+		
+		$return_url  = add_query_arg( ['stripe_onboarding' => 'done'], dokan_get_navigation_url('stripe-connect') );
+		$refresh_url = add_query_arg( ['stripe_onboarding' => 'refresh'], dokan_get_navigation_url('stripe-connect') );
 
-		wp_send_json_success( $result );
+		//get onboarding link
+		$onboarding_link = $this->create_express_account_onboarding_link( $result['account_id'], $return_url, $refresh_url );
+
+		if( is_wp_error( $onboarding_link ) ) {
+			wp_send_json_error( $onboarding_link->get_error_message() );
+		}
+
+		wp_send_json_success( [
+			'account_id'      => $result[ 'account_id' ],
+			'onboarding_link' => $onboarding_link[ 'onboarding_url' ],
+			'return_url'      => $return_url,
+			'refresh_url'     => $refresh_url,
+		] );
 	}
 
 	/**

@@ -39,10 +39,13 @@ class Libookin_Vendor_Dashboard {
 		// Remove Dokan withdrawal requests
 		add_filter( 'dokan_get_dashboard_nav', array( $this, 'remove_withdrawal_nav' ) );
 		add_filter( 'dokan_query_var_filter', array( $this, 'remove_withdrawal_query_vars' ) );
-		
+		//add custom query vars to dokan dashboard
+		add_filter( 'dokan_query_var_filter', array( $this, 'add_custom_query_vars' ) );
 		// Add custom dashboard sections
 		add_filter( 'dokan_get_dashboard_nav', array( $this, 'add_royalty_nav' ) );
 		add_action( 'dokan_load_custom_template', array( $this, 'load_royalty_template' ) );
+
+
 		
 		// Rename "Orders" to "Books Sold"
 		add_filter( 'dokan_get_dashboard_nav', array( $this, 'rename_orders_nav' ) );
@@ -77,6 +80,19 @@ class Libookin_Vendor_Dashboard {
 	public function remove_withdrawal_query_vars( $query_vars ) {
 		unset( $query_vars['withdraw'] );
 		return $query_vars;
+	}
+
+	/**
+	 * Add custom query vars
+	 *
+	 * @since 1.0.0
+	 * @param array $query_vars Existing query variables.
+	 * @return array Modified query variables.
+	 */
+	public function add_custom_query_vars( $query_vars ) {
+		$query_vars['royalties'] = 'royalties';
+		$query_vars['stripe-connect'] = 'stripe-connect';
+		return $query_vars;	
 	}
 
 	/**
@@ -118,6 +134,7 @@ class Libookin_Vendor_Dashboard {
 		return $urls;
 	}
 
+
 	/**
 	 * Load custom templates for royalty pages
 	 *
@@ -125,11 +142,30 @@ class Libookin_Vendor_Dashboard {
 	 * @param array $query_vars Current query variables.
 	 */
 	public function load_royalty_template( $query_vars ) {
-		if ( isset( $query_vars['royalties'] ) ) {
-			$this->render_royalties_page();
-		} elseif ( isset( $query_vars['stripe-connect'] ) ) {
-			$this->render_stripe_connect_page();
+		if ( ! function_exists( 'dokan' ) || ! dokan_is_seller_dashboard() ) {
+			return;
 		}
+		?>
+		<div class="dokan-dashboard-wrap">
+		<?php
+			do_action( 'dokan_dashboard_content_before' );
+		?>
+			<div class="dokan-dashboard-content">
+			<?php
+			do_action( 'dokan_dashboard_content_inside_before' );
+			if ( isset( $query_vars['royalties'] ) ) {
+				$this->render_royalties_page();
+			} elseif ( isset( $query_vars['stripe-connect'] ) ) {
+				$this->render_stripe_connect_page();
+			}
+			?>
+			</div>
+		<?php
+			do_action( 'dokan_dashboard_content_inside_after' );
+			do_action( 'dokan_dashboard_content_after' );
+		?>
+		</div>
+		<?php
 	}
 
 	/**

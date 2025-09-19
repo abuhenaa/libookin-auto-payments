@@ -155,6 +155,17 @@ class Libookin_Auto_Payments {
 			LIBOOKIN_AUTO_PAYMENTS_VERSION,
 			true
 		);
+
+		//localize scripts
+		wp_localize_script(
+			'libookin-auto-payments-frontend',
+			'libookinAutoPayments',
+			array(
+				'ajax_url' => admin_url( 'admin-ajax.php' ),
+				'nonce'    => wp_create_nonce( 'libookin_auto_payments_nonce' ),
+				'user_id'  => get_current_user_id(),
+			)
+		);
 	}
 
 	/**
