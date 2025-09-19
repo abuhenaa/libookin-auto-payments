@@ -390,6 +390,11 @@ class Libookin_Vendor_Dashboard {
 									<?php echo $account_details['payouts_enabled'] ? '✅' : '❌'; ?>
 								</span>
 							</div>
+							<div class="info-row">
+								<button class="lap-stripe-dashboard-link button button-primary">
+									<?php esc_html_e( 'Go to Stripe Dashboard', 'libookin-auto-payments' ); ?>
+								</button>
+							</div>
 						</div>
 
 						<?php if ( ! empty( $account_details['requirements'] ) ) : ?>

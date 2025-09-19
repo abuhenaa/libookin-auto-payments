@@ -69,6 +69,7 @@ class Libookin_Stripe_Connect_Manager {
 		add_action( 'wp_ajax_get_stripe_account_status', array( $this, 'ajax_get_account_status' ) );
 		add_action( 'wp_ajax_get_stripe_balance', array( $this, 'ajax_get_stripe_balance' ) );
 		add_action( 'user_register', array( $this, 'maybe_create_connect_account' ) );
+		add_action( 'wp_ajax_get_stripe_account_url', array( $this, 'ajax_get_stripe_account_url' ) );
 	}
 
 	/**
@@ -472,5 +473,46 @@ class Libookin_Stripe_Connect_Manager {
 		);
 
 		return false !== $updated;
+	}
+
+	/**
+	 * get stripe dashboard url
+	 */
+	public function ajax_get_stripe_account_url() {
+		check_ajax_referer( 'libookin_auto_payments_nonce', 'nonce' );
+
+		$vendor_id = sanitize_text_field( $_POST['vendor_id'] ?? '' );
+
+		if ( empty( $vendor_id ) ) {
+			wp_send_json_error( __( 'Vendor ID is required.', 'libookin-auto-payments' ) );
+		}
+
+		$account_id = get_user_meta( $vendor_id, 'stripe_connect_account_id', true );
+
+		if ( empty( $account_id ) ) {
+			wp_send_json_error( __( 'Account ID is required.', 'libookin-auto-payments' ) );
+		}
+
+		$account_url = $this->get_account_url( $account_id );
+
+		if ( is_wp_error( $account_url ) ) {
+			wp_send_json_error( $account_url->get_error_message() );
+		}
+
+		wp_send_json_success( array('url' => $account_url) );
+	}
+
+	/**
+	 * get stripe dashboard url
+	 */
+	public function get_account_url( $account_id ) {
+		//create the login link
+		try{
+			$login_link = \Stripe\Account::createLoginLink( $account_id );
+			return $login_link->url;
+		} catch(\Exception $e){
+			error_log( $e->getMessage() );
+			return new WP_Error( 'stripe_error', $e->getMessage() );
+		}
 	}
 }

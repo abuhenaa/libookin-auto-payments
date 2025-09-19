@@ -98,4 +98,31 @@
         }
     });
 
+    $(document).on('click','.lap-stripe-dashboard-link',function(e){
+        e.preventDefault();
+        const button = $(this);
+        button.prop('disabled', true).text('Loading...');
+
+        $.ajax({
+            url: libookinAutoPayments.ajax_url,
+            type: 'POST',
+            data:{
+                action: 'get_stripe_account_url',
+                nonce: libookinAutoPayments.nonce,
+                vendor_id: libookinAutoPayments.user_id
+            },
+            success: function(response) {
+              if(response.success){
+                window.open(response.data.url);
+              }
+            },
+            error: function() {
+                alert('An error occurred while getting account URL.');
+            },
+            complete: function() {
+                button.prop('disabled', false).text('Go to Stripe Dashboard');
+            }
+        })
+    })
+
 })(jQuery);
