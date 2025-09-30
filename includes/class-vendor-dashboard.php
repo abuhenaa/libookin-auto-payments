@@ -178,6 +178,9 @@ class Libookin_Vendor_Dashboard {
 		$balance_data = $this->get_vendor_balance_data( $vendor_id );
 		$sales_data = $this->get_vendor_sales_data( $vendor_id );
 		$payout_history = $this->get_vendor_payout_history( $vendor_id );
+		//get order data and royalties
+		$order_data = $this->get_order_data_and_royalties( $vendor_id );
+		
 		?>
 		<div class="libookin-royalties-dashboard">
 			<div class="dokan-dashboard-header">
@@ -200,12 +203,47 @@ class Libookin_Vendor_Dashboard {
 					</div>
 					
 					<div class="balance-card total">
-						<h3><?php esc_html_e( 'Total Earned (2024)', 'libookin-auto-payments' ); ?></h3>
+						<h3><?php esc_html_e( 'Total Earned', 'libookin-auto-payments' ); ?></h3>
 						<div class="amount">€<?php echo esc_html( number_format( $balance_data['total_year'], 2 ) ); ?></div>
 						<p class="description"><?php echo esc_html( $balance_data['books_sold'] ); ?> <?php esc_html_e( 'books sold', 'libookin-auto-payments' ); ?></p>
 					</div>
 				</div>
 			</div>
+
+			<!-- Order and Royalties details -->
+			 <div class="libookin-order-royalties-details">
+				<h3><?php esc_html_e( 'Order and Royalties Details', 'libookin-auto-payments' ); ?></h3>
+				<div class="order-royalties">
+					<div class="order-royalties-table">
+						<table>
+							<thead>
+								<tr>
+									<th><?php esc_html_e( 'Order ID', 'libookin-auto-payments' ); ?></th>
+									<th><?php esc_html_e( 'Order Details', 'libookin-auto-payments' ); ?></th>
+									<th><?php esc_html_e( 'HT Price', 'libookin-auto-payments' ); ?></th>
+									<th><?php esc_html_e( 'Royalty', 'libookin-auto-payments' ); ?></th>
+									<th><?php esc_html_e( 'Status', 'libookin-auto-payments' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php 
+								foreach ( $order_data as $order ) : ?>
+									<tr>
+										<td><?php echo $order->order_id; ?></td>
+										<td>
+											<?php echo $order->order_item_name; ?>
+											<span>x <?php echo $order->product_qty; ?></span>
+										</td>
+										<td><?php echo wc_price( $order->price_ht ); ?></td>
+										<td><?php echo wc_price( $order->royalty_amount ); ?></td>
+										<td><?php echo $order->payout_status; ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			 </div>
 
 			<!-- Next Payout Info -->
 			<div class="libookin-next-payout">
@@ -323,6 +361,36 @@ class Libookin_Vendor_Dashboard {
 		});
 		</script>
 		<?php
+	}
+
+	/**
+	 * Get order details and royalties for the current vendor
+	 *
+	 * @return array
+	 */
+	private function get_order_data_and_royalties( $vendor_id ) {
+		global $wpdb;
+		$sql = "SELECT
+		 	r.order_id, 
+			r.product_id, 
+			r.vendor_id, 
+			r.price_ht, 
+			r.royalty_percent,
+			r.royalty_amount,
+			r.payout_status,
+			r.created_at,
+			ot.order_item_name,
+			wop.product_qty
+			FROM {$wpdb->prefix}libookin_royalties r
+			INNER JOIN {$wpdb->prefix}woocommerce_order_items ot ON r.order_id = ot.order_id
+			LEFT JOIN {$wpdb->prefix}wc_order_product_lookup wop ON r.order_id = wop.order_id
+			WHERE r.vendor_id = %d
+			ORDER BY r.created_at DESC";
+
+		$vendor_sales_data = $wpdb->prepare( $sql, $vendor_id );
+		$vendor_sales_data = $wpdb->get_results( $vendor_sales_data );
+
+		return $vendor_sales_data;
 	}
 
 	/**
