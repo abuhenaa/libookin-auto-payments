@@ -95,7 +95,7 @@ class Libookin_Auto_Payments {
 		
 		// Initialize hooks for royalty processing
 		add_action( 'woocommerce_order_status_completed', array( $this, 'process_order_royalties' ) );
-		
+		add_action( 'libookin_process_royalties_async', array( $this, 'process_royalties_immediate' ), 10, 1 );
 		// Add custom user meta fields for Stripe Connect
 		add_action( 'show_user_profile', array( $this, 'add_stripe_connect_fields' ) );
 		add_action( 'edit_user_profile', array( $this, 'add_stripe_connect_fields' ) );
