@@ -101,6 +101,7 @@ class Libookin_Auto_Payments {
 		add_action( 'edit_user_profile', array( $this, 'add_stripe_connect_fields' ) );
 		add_action( 'personal_options_update', array( $this, 'save_stripe_connect_fields' ) );
 		add_action( 'edit_user_profile_update', array( $this, 'save_stripe_connect_fields' ) );
+		add_action( 'init', array( $this, 'maybe_flush_rewrite_rules' ) );
 	}
 
 	/**
@@ -386,8 +387,10 @@ class Libookin_Auto_Payments {
 			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 			dbDelta( $sql );
 		}
-		// Flush rewrite rules
-		flush_rewrite_rules();
+
+		//set transient for flush rewrite rules
+		set_transient( 'libookin_flush_rewrite_rules', true );		
+
 	}
 
 	/**
@@ -457,4 +460,13 @@ class Libookin_Auto_Payments {
 		dbDelta( $royalties_sql );
 		dbDelta( $payouts_sql );
 	}
+
+	//flush rewrite rules if transient is set
+	public function maybe_flush_rewrite_rules() {
+		if ( get_transient( 'libookin_flush_rewrite_rules' ) ) {
+			flush_rewrite_rules();
+			delete_transient( 'libookin_flush_rewrite_rules' );
+		}
+	}
+
 }
