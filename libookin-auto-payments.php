@@ -31,37 +31,6 @@ define( 'LIBOOKIN_AUTO_PAYMENTS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 // Autoload Composer dependencies
 require_once LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR . 'vendor/autoload.php';
 
-// Check for required dependencies
-register_activation_hook( __FILE__, 'libookin_activation_tasks' );
-
-/**
- * Check if required plugins are active
- *
- * @since 1.0.0
- */
-function libookin_activation_tasks() {
-	if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-		deactivate_plugins( plugin_basename( __FILE__ ) );
-		wp_die(
-			__( 'Libookin Auto Payments requires WooCommerce to be installed and active.', 'libookin-auto-payments' ),
-			__( 'Plugin Dependency Error', 'libookin-auto-payments' ),
-			array( 'back_link' => true )
-		);
-	}
-
-	//add new table column 'payout_status' to libookin_royalties table if not exists
-	global $wpdb;
-	$table_name = $wpdb->prefix . 'libookin_royalties';
-	$column     = $wpdb->get_results( "SHOW COLUMNS FROM $table_name LIKE 'payout_status'" );
-	if ( empty( $column ) ) {
-		$charset_collate = $wpdb->get_charset_collate();
-		$sql             = "ALTER TABLE $table_name ADD payout_status VARCHAR(20) NOT NULL DEFAULT 'pending' $charset_collate";
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( $sql );
-	}
-
-}
-
 // Initialize the plugin
 add_action( 'plugins_loaded', 'libookin_auto_payments_init' );
 

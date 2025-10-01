@@ -366,6 +366,26 @@ class Libookin_Auto_Payments {
 			wp_schedule_event( time(), 'daily', 'libookin_daily_payout_check' );
 		}
 
+		// Check for WooCommerce dependency
+		if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+			deactivate_plugins( plugin_basename( __FILE__ ) );
+			wp_die(
+				__( 'Libookin Auto Payments requires WooCommerce to be installed and active.', 'libookin-auto-payments' ),
+				__( 'Plugin Dependency Error', 'libookin-auto-payments' ),
+				array( 'back_link' => true )
+			);
+		}
+
+		//add new table column 'payout_status' to libookin_royalties table if not exists
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'libookin_royalties';
+		$column     = $wpdb->get_results( "SHOW COLUMNS FROM $table_name LIKE 'payout_status'" );
+		if ( empty( $column ) ) {
+			$charset_collate = $wpdb->get_charset_collate();
+			$sql             = "ALTER TABLE $table_name ADD payout_status VARCHAR(20) NOT NULL DEFAULT 'pending' $charset_collate";
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+			dbDelta( $sql );
+		}
 		// Flush rewrite rules
 		flush_rewrite_rules();
 	}
