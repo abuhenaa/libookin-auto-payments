@@ -377,17 +377,6 @@ class Libookin_Auto_Payments {
 			);
 		}
 
-		//add new table column 'payout_status' to libookin_royalties table if not exists
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'libookin_royalties';
-		$column     = $wpdb->get_results( "SHOW COLUMNS FROM $table_name LIKE 'payout_status'" );
-		if ( empty( $column ) ) {
-			$charset_collate = $wpdb->get_charset_collate();
-			$sql             = "ALTER TABLE $table_name ADD payout_status VARCHAR(20) NOT NULL DEFAULT 'pending' $charset_collate";
-			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-			dbDelta( $sql );
-		}
-
 		//set transient for flush rewrite rules
 		set_transient( 'libookin_flush_rewrite_rules', true );		
 
@@ -418,7 +407,7 @@ class Libookin_Auto_Payments {
 
 		// Enhanced royalties table with Stripe Connect support
 		$royalties_table = $wpdb->prefix . 'libookin_royalties';
-		$royalties_sql   = "CREATE TABLE IF NOT EXISTS $royalties_table (
+		$royalties_sql   = "CREATE TABLE $royalties_table (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			order_id BIGINT NOT NULL,
 			product_id BIGINT NOT NULL,
@@ -438,7 +427,7 @@ class Libookin_Auto_Payments {
 
 		// Payout history table
 		$payouts_table = $wpdb->prefix . 'libookin_payouts';
-		$payouts_sql   = "CREATE TABLE IF NOT EXISTS $payouts_table (
+		$payouts_sql   = "CREATE TABLE $payouts_table (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			vendor_id BIGINT NOT NULL,
 			amount DECIMAL(10,2) NOT NULL,
