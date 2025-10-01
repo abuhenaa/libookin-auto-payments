@@ -170,3 +170,32 @@ add_action('woocommerce_process_product_meta', function($post_id) {
     }
 });
 
+//export libookin royalties to CSV
+add_action('admin_init', 'libookin_export_royalties_to_csv');
+function libookin_export_royalties_to_csv() {
+    if (isset($_GET['libookin_export_csv']) && $_GET['libookin_export_csv'] == '1') {
+        global $wpdb;
+        $table = $wpdb->prefix . 'libookin_royalties';
+        $results = $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC", ARRAY_A);
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=libookin_royalties.csv');
+        $output = fopen('php://output', 'w');
+        
+        fputcsv($output, ['Prix TTC (€)', 'TVA (5.5%)', 'Prix HT (€)', '% Droits', 'Droits (€)', 'Frais Stripe (€)', 'Marge nette (€)', 'Date']);
+        
+        foreach ($results as $row) {
+            $ht = floatval($row['price_ht']);
+            $royalty = floatval($row['royalty_amount']);
+            $percent = floatval($row['royalty_percent']);
+            $vat = round($ht * 0.055, 2);
+            $ttc = round($ht + $vat, 2);
+            $stripe_fee = round(($ttc * 0.014) + 0.25, 2);
+            $net_margin = round($ht - $royalty - $stripe_fee, 2);
+            fputcsv($output, [$ttc, $vat, $ht, $percent . '%', $royalty, $stripe_fee, $net_margin, $row['created_at']]);
+        }
+        fclose($output);
+        exit;
+    }
+}
+
