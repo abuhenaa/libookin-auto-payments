@@ -223,22 +223,30 @@ class Libookin_Vendor_Dashboard {
 									<th><?php esc_html_e( 'HT Price', 'libookin-auto-payments' ); ?></th>
 									<th><?php esc_html_e( 'Royalty', 'libookin-auto-payments' ); ?></th>
 									<th><?php esc_html_e( 'Status', 'libookin-auto-payments' ); ?></th>
+									<th><?php esc_html_e( 'Created', 'libookin-auto-payments' ); ?></th>
 								</tr>
 							</thead>
 							<tbody>
-								<?php 
-								foreach ( $order_data as $order ) : ?>
-									<tr>
-										<td><?php echo $order->order_id; ?></td>
-										<td>
-											<?php echo $order->order_item_name; ?>
-											<span>x <?php echo $order->product_qty; ?></span>
-										</td>
-										<td><?php echo wc_price( $order->price_ht ); ?></td>
-										<td><?php echo wc_price( $order->royalty_amount ); ?></td>
-										<td><?php echo $order->payout_status; ?></td>
-									</tr>
-								<?php endforeach; ?>
+								<?php
+								if( ! empty( $order_data)){
+									foreach ( $order_data as $order ) : ?>
+										<tr>
+											<td><?php echo $order->order_id; ?></td>
+											<td>
+												<?php echo $order->order_item_name; ?>
+												<span>x <?php echo $order->product_qty; ?></span>
+											</td>
+											<td><?php echo wc_price( $order->price_ht ); ?></td>
+											<td><?php echo wc_price( $order->royalty_amount ); ?></td>
+											<td><?php echo $order->payout_status; ?></td>
+											<td><?php echo $order->created_at; ?></td>
+										</tr>
+									<?php
+								endforeach;
+							} else{
+								echo esc_html__( 'No data to show!', 'libookin-auto-payments');
+							}
+							 ?>
 							</tbody>
 						</table>
 					</div>

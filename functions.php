@@ -12,7 +12,7 @@ function my_minimum_product_price_check( $product ) {
         $product = wc_get_product( $product );
     }
 
-    if ( ! $product instanceof WC_Product ) {
+    if ( !$product instanceof WC_Product ) {
         return; // safety check
     }
     $regular_price = floatval( $product->get_regular_price() );
@@ -25,15 +25,15 @@ function my_minimum_product_price_check( $product ) {
             WC_Admin_Meta_Boxes::add_error( sprintf(
                 __( 'Error: The minimum allowed product price is %s.', 'your-textdomain' ),
                 wc_price( $min_price )
-            ));
+            ) );
         }
 
         // For programmatic creation (outside admin), throw error
-        if ( ! is_admin() ) {
+        if ( !is_admin() ) {
             wp_die( sprintf(
                 __( 'Product creation failed: The minimum allowed price is %s.', 'your-textdomain' ),
                 wc_price( $min_price )
-            ));
+            ) );
         }
 
         // Force product to stay as draft instead of publishing
@@ -41,15 +41,14 @@ function my_minimum_product_price_check( $product ) {
     }
 }
 
-
 // Remove Dokan's "Orders" tab from vendor dashboard
-add_filter('dokan_get_dashboard_nav', function($urls) {
-    unset($urls['orders']);
+add_filter( 'dokan_get_dashboard_nav', function ( $urls ) {
+    unset( $urls[ 'orders' ] );
     return $urls;
-});
+} );
 
 // Admin menu for royalty summary
-add_action('admin_menu', 'libookin_add_royalty_summary_menu');
+add_action( 'admin_menu', 'libookin_add_royalty_summary_menu' );
 function libookin_add_royalty_summary_menu() {
     add_menu_page(
         'Royalty Summary',
@@ -65,16 +64,18 @@ function libookin_add_royalty_summary_menu() {
 // Royalty summary page
 function libookin_render_royalty_summary_page() {
     global $wpdb;
-    $table = $wpdb->prefix . 'libookin_royalties';
-    $results = $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC");
+    $table   = $wpdb->prefix . 'libookin_royalties';
+    $results = $wpdb->get_results( "SELECT * FROM $table ORDER BY created_at DESC" );
 
-    $total_sales = $total_royalties = $total_stripe_fees = $total_net_margin = 0;
-    $monthly_data = [];
+    $total_sales  = $total_royalties  = $total_stripe_fees  = $total_net_margin  = 0;
+    $monthly_data = [  ];
 
     echo '<div class="wrap">';
     echo '<h1>Résumé des redevances – Détail complet</h1>';
-    echo '<a href="' . admin_url('admin.php?page=libookin-royalty-summary&libookin_export_csv=1') . '" class="button button-primary">Télécharger le CSV</a>';
+    echo '<a href="' . admin_url( 'admin.php?page=libookin-royalty-summary&libookin_export_csv=1' ) . '" class="button button-primary">Télécharger le CSV</a>';
     echo '<table class="widefat" style="margin-top:20px;"><thead><tr>
+        <th>Vendeur</th>
+        <th>Produit</th>
         <th>Prix TTC (€)</th>
         <th>TVA (5.5%)</th>
         <th>Prix HT (€)</th>
@@ -84,39 +85,41 @@ function libookin_render_royalty_summary_page() {
         <th>Marge nette (€)</th>
         <th>Date</th></tr></thead><tbody>';
 
-    foreach ($results as $row) {
-        $ht = floatval($row->price_ht);
-        $royalty = floatval($row->royalty_amount);
-        $percent = floatval($row->royalty_percent);
-        $vat = round($ht * 0.055, 2);
-        $ttc = round($ht + $vat, 2);
-        $stripe_fee = round(($ttc * 0.014) + 0.25, 2);
-        $net_margin = round($ht - $royalty - $stripe_fee, 2);
-        $month = date('Y-m', strtotime($row->created_at));
-        if ( ! isset( $monthly_data[$month] ) ) {
-            $monthly_data[$month] = [
+    foreach ( $results as $row ) {
+        $vendor_info = $row->vendor_id;
+        $product_id  = intval( $row->product_id );
+        $ht          = floatval( $row->price_ht );
+        $royalty     = floatval( $row->royalty_amount );
+        $percent     = floatval( $row->royalty_percent );
+        $vat         = round( $ht * 0.055, 2 );
+        $ttc         = round( $ht + $vat, 2 );
+        $stripe_fee  = round( ( $ttc * 0.014 ) + 0.25, 2 );
+        $net_margin  = round( $ht - $royalty - $stripe_fee, 2 );
+        $month       = date( 'Y-m', strtotime( $row->created_at ) );
+        if ( !isset( $monthly_data[ $month ] ) ) {
+            $monthly_data[ $month ] = [
                 'sales'     => 0,
                 'royalties' => 0,
                 'margin'    => 0,
-            ];
+             ];
         }
-        $monthly_data[$month]['sales'] += $ht;
-        $monthly_data[$month]['royalties'] += $royalty;
-        $monthly_data[$month]['margin'] += $net_margin;
+        $monthly_data[ $month ][ 'sales' ] += $ht;
+        $monthly_data[ $month ][ 'royalties' ] += $royalty;
+        $monthly_data[ $month ][ 'margin' ] += $net_margin;
 
         $total_sales += $ht;
         $total_royalties += $royalty;
         $total_stripe_fees += $stripe_fee;
         $total_net_margin += $net_margin;
 
-        echo "<tr><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
+        echo "<tr><td>{$vendor_info}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
     }
 
     echo '</tbody></table><h2>Résumé global</h2><table class="widefat"><tbody>';
-    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format($total_sales, 2) . "</td></tr>";
-    echo "<tr><td><strong>Total Droits</strong></td><td>€ " . number_format($total_royalties, 2) . "</td></tr>";
-    echo "<tr><td><strong>Total Stripe</strong></td><td>€ " . number_format($total_stripe_fees, 2) . "</td></tr>";
-    echo "<tr><td><strong>Marge nette</strong></td><td>€ " . number_format($total_net_margin, 2) . "</td></tr>";
+    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( $total_sales, 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total Droits</strong></td><td>€ " . number_format( $total_royalties, 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total Stripe</strong></td><td>€ " . number_format( $total_stripe_fees, 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Marge nette</strong></td><td>€ " . number_format( $total_net_margin, 2 ) . "</td></tr>";
     echo '</tbody></table>';
 
     echo '<canvas id="royaltyChart"></canvas>
@@ -126,11 +129,11 @@ function libookin_render_royalty_summary_page() {
     new Chart(ctx, {
         type: "bar",
         data: {
-            labels: ' . json_encode(array_keys($monthly_data)) . ',
+            labels: ' . json_encode( array_keys( $monthly_data ) ) . ',
             datasets: [
-                { label: "HT", backgroundColor: "#3498db", data: ' . json_encode(array_column($monthly_data, "sales")) . ' },
-                { label: "Droits", backgroundColor: "#2ecc71", data: ' . json_encode(array_column($monthly_data, "royalties")) . ' },
-                { label: "Marge", backgroundColor: "#e67e22", data: ' . json_encode(array_column($monthly_data, "margin")) . ' }
+                { label: "HT", backgroundColor: "#3498db", data: ' . json_encode( array_column( $monthly_data, "sales" ) ) . ' },
+                { label: "Droits", backgroundColor: "#2ecc71", data: ' . json_encode( array_column( $monthly_data, "royalties" ) ) . ' },
+                { label: "Marge", backgroundColor: "#e67e22", data: ' . json_encode( array_column( $monthly_data, "margin" ) ) . ' }
             ]
         },
         options: {
@@ -146,56 +149,57 @@ function libookin_render_royalty_summary_page() {
 }
 
 // Add promo fields to product
-add_action('woocommerce_product_options_general_product_data', function() {
-    woocommerce_wp_text_input([
-        'id' => '_libookin_promo_discount',
-        'label' => 'Promo Discount (%)',
-        'type' => 'number',
-        'custom_attributes' => ['step' => '1', 'min' => '0', 'max' => '100']
-    ]);
-    woocommerce_wp_text_input([
-        'id' => '_libookin_promo_end_date',
+add_action( 'woocommerce_product_options_general_product_data', function () {
+    woocommerce_wp_text_input( [
+        'id'                => '_libookin_promo_discount',
+        'label'             => 'Promo Discount (%)',
+        'type'              => 'number',
+        'custom_attributes' => [ 'step' => '1', 'min' => '0', 'max' => '100' ],
+     ] );
+    woocommerce_wp_text_input( [
+        'id'    => '_libookin_promo_end_date',
         'label' => 'Promo End Date (YYYY-MM-DD)',
-        'type' => 'date'
-    ]);
-});
+        'type'  => 'date',
+     ] );
+} );
 
 // Save promo fields
-add_action('woocommerce_process_product_meta', function($post_id) {
-    if (isset($_POST['_libookin_promo_discount'])) {
-        update_post_meta($post_id, '_libookin_promo_discount', sanitize_text_field($_POST['_libookin_promo_discount']));
+add_action( 'woocommerce_process_product_meta', function ( $post_id ) {
+    if ( isset( $_POST[ '_libookin_promo_discount' ] ) ) {
+        update_post_meta( $post_id, '_libookin_promo_discount', sanitize_text_field( $_POST[ '_libookin_promo_discount' ] ) );
     }
-    if (isset($_POST['_libookin_promo_end_date'])) {
-        update_post_meta($post_id, '_libookin_promo_end_date', sanitize_text_field($_POST['_libookin_promo_end_date']));
+    if ( isset( $_POST[ '_libookin_promo_end_date' ] ) ) {
+        update_post_meta( $post_id, '_libookin_promo_end_date', sanitize_text_field( $_POST[ '_libookin_promo_end_date' ] ) );
     }
-});
+} );
 
 //export libookin royalties to CSV
-add_action('admin_init', 'libookin_export_royalties_to_csv');
+add_action( 'admin_init', 'libookin_export_royalties_to_csv' );
 function libookin_export_royalties_to_csv() {
-    if (isset($_GET['libookin_export_csv']) && $_GET['libookin_export_csv'] == '1') {
+    if ( isset( $_GET[ 'libookin_export_csv' ] ) && $_GET[ 'libookin_export_csv' ] == '1' ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'libookin_royalties';
-        $results = $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC", ARRAY_A);
+        $table   = $wpdb->prefix . 'libookin_royalties';
+        $results = $wpdb->get_results( "SELECT * FROM $table ORDER BY created_at DESC", ARRAY_A );
 
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename=libookin_royalties.csv');
-        $output = fopen('php://output', 'w');
-        
-        fputcsv($output, ['Prix TTC (€)', 'TVA (5.5%)', 'Prix HT (€)', '% Droits', 'Droits (€)', 'Frais Stripe (€)', 'Marge nette (€)', 'Date']);
-        
-        foreach ($results as $row) {
-            $ht = floatval($row['price_ht']);
-            $royalty = floatval($row['royalty_amount']);
-            $percent = floatval($row['royalty_percent']);
-            $vat = round($ht * 0.055, 2);
-            $ttc = round($ht + $vat, 2);
-            $stripe_fee = round(($ttc * 0.014) + 0.25, 2);
-            $net_margin = round($ht - $royalty - $stripe_fee, 2);
-            fputcsv($output, [$ttc, $vat, $ht, $percent . '%', $royalty, $stripe_fee, $net_margin, $row['created_at']]);
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename=libookin_royalties.csv' );
+        $output = fopen( 'php://output', 'w' );
+
+        fputcsv( $output, [ 'Vendeur', 'Produit', 'Prix TTC (€)', 'TVA (5.5%)', 'Prix HT (€)', '% Droits', 'Droits (€)', 'Frais Stripe (€)', 'Marge nette (€)', 'Date' ] );
+
+        foreach ( $results as $row ) {
+            $vendor_info = $row[ 'vendor_id' ];
+            $product_id  = intval( $row[ 'product_id' ] );
+            $ht         = floatval( $row[ 'price_ht' ] );
+            $royalty    = floatval( $row[ 'royalty_amount' ] );
+            $percent    = floatval( $row[ 'royalty_percent' ] );
+            $vat        = round( $ht * 0.055, 2 );
+            $ttc        = round( $ht + $vat, 2 );
+            $stripe_fee = round( ( $ttc * 0.014 ) + 0.25, 2 );
+            $net_margin = round( $ht - $royalty - $stripe_fee, 2 );
+            fputcsv( $output, [ $vendor_info, $product_id, $ttc, $vat, $ht, $percent . '%', $royalty, $stripe_fee, $net_margin, $row[ 'created_at' ] ] );
         }
-        fclose($output);
+        fclose( $output );
         exit;
     }
 }
-
