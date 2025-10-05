@@ -75,6 +75,7 @@ function libookin_render_royalty_summary_page() {
     echo '<a href="' . admin_url( 'admin.php?page=libookin-royalty-summary&libookin_export_csv=1' ) . '" class="button button-primary">Télécharger le CSV</a>';
     echo '<table class="widefat" style="margin-top:20px;"><thead><tr>
         <th>Vendeur</th>
+        <th>Vendeur Nom</th>
         <th>Produit</th>
         <th>Prix TTC (€)</th>
         <th>TVA (5.5%)</th>
@@ -87,6 +88,8 @@ function libookin_render_royalty_summary_page() {
 
     foreach ( $results as $row ) {
         $vendor_info = $row->vendor_id;
+        $vendor_user = get_userdata( $vendor_info );
+        $vendor_name = $vendor_user ? $vendor_user->display_name : '';
         $product_id  = intval( $row->product_id );
         $ht          = floatval( $row->price_ht );
         $royalty     = floatval( $row->royalty_amount );
@@ -112,7 +115,7 @@ function libookin_render_royalty_summary_page() {
         $total_stripe_fees += $stripe_fee;
         $total_net_margin += $net_margin;
 
-        echo "<tr><td>{$vendor_info}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
+        echo "<tr><td>{$vendor_info}</td><td>{$vendor_name}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
     }
 
     echo '</tbody></table><h2>Résumé global</h2><table class="widefat"><tbody>';
@@ -185,10 +188,12 @@ function libookin_export_royalties_to_csv() {
         header( 'Content-Disposition: attachment; filename=libookin_royalties.csv' );
         $output = fopen( 'php://output', 'w' );
 
-        fputcsv( $output, [ 'Vendeur', 'Produit', 'Prix TTC (€)', 'TVA (5.5%)', 'Prix HT (€)', '% Droits', 'Droits (€)', 'Frais Stripe (€)', 'Marge nette (€)', 'Date' ] );
+        fputcsv( $output, [ 'Vendeur', 'Vendeur Nom', 'Produit', 'Prix TTC (€)', 'TVA (5.5%)', 'Prix HT (€)', '% Droits', 'Droits (€)', 'Frais Stripe (€)', 'Marge nette (€)', 'Date' ] );
 
         foreach ( $results as $row ) {
             $vendor_info = $row[ 'vendor_id' ];
+            $vendor_user = get_userdata( $vendor_info );
+            $vendor_name = $vendor_user ? $vendor_user->display_name : '';
             $product_id  = intval( $row[ 'product_id' ] );
             $ht         = floatval( $row[ 'price_ht' ] );
             $royalty    = floatval( $row[ 'royalty_amount' ] );
@@ -197,7 +202,7 @@ function libookin_export_royalties_to_csv() {
             $ttc        = round( $ht + $vat, 2 );
             $stripe_fee = round( ( $ttc * 0.014 ) + 0.25, 2 );
             $net_margin = round( $ht - $royalty - $stripe_fee, 2 );
-            fputcsv( $output, [ $vendor_info, $product_id, $ttc, $vat, $ht, $percent . '%', $royalty, $stripe_fee, $net_margin, $row[ 'created_at' ] ] );
+            fputcsv( $output, [ $vendor_info, $vendor_name, $product_id, $ttc, $vat, $ht, $percent . '%', $royalty, $stripe_fee, $net_margin, $row[ 'created_at' ] ] );
         }
         fclose( $output );
         exit;
