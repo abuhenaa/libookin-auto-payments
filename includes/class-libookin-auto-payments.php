@@ -287,14 +287,17 @@ class Libookin_Auto_Payments {
 	 * @return float Royalty percentage.
 	 */
 	public function calculate_royalty_percentage( $price_ht ) {
-		if ( $price_ht <= 2.98 ) {
+
+		if ( $price_ht < 2.83 ) {
 			return 50;
-		} elseif ( $price_ht <= 4.98 ) {
+		} elseif ( $price_ht < 4.73 ) {
 			return 75;
-		} elseif ( $price_ht <= 9.98 ) {
+		} elseif ( $price_ht < 9.47 ) {
 			return 80;
-		} else {
+		} else if ( $price_ht < 14.21 ) {
 			return 70;
+		} else {
+			return 50;
 		}
 	}
 
