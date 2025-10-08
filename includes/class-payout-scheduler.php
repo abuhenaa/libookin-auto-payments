@@ -125,9 +125,15 @@ class Libookin_Payout_Scheduler {
 	public function get_eligible_vendors() {
 		global $wpdb;
 
-		$two_months_ago = new DateTime();
-		$two_months_ago->sub( new DateInterval( 'P2M' ) );
-		$cutoff_date = $two_months_ago->format( 'Y-m-d H:i:s' );
+		// Define the start and end of the month exactly two months ago
+		$start_date = new DateTime('first day of -3 months');
+		$start_date->setTime(0, 0, 0);
+		$end_date = new DateTime('last day of -3 months');
+		$end_date->setTime(23, 59, 59);
+
+		// Get formatted timestamps
+		$start = $start_date->format('Y-m-d H:i:s');
+		$end   = $end_date->format('Y-m-d H:i:s');
 
 		// Get vendors with pending royalties >= €15 and older than 2 months
 		$results = $wpdb->get_results(
@@ -142,7 +148,6 @@ class Libookin_Payout_Scheduler {
 					um.meta_value as stripe_account_id
 				FROM {$wpdb->prefix}libookin_royalties r
 				INNER JOIN {$wpdb->users} u ON r.vendor_id = u.ID
-				LEFT JOIN {$wpdb->usermeta} um ON u.ID = um.user_id AND um.meta_key = 'stripe_connect_account_id'
 				WHERE r.payout_status = 'pending' 
 				AND r.created_at <= %s
 				AND um.meta_value IS NOT NULL
@@ -150,7 +155,8 @@ class Libookin_Payout_Scheduler {
 				GROUP BY r.vendor_id
 				HAVING total_pending >= %f
 				ORDER BY oldest_royalty ASC",
-				$cutoff_date,
+				$start,
+				$end,
 				self::MINIMUM_PAYOUT_AMOUNT
 			)
 		);
