@@ -148,8 +148,9 @@ class Libookin_Payout_Scheduler {
 					um.meta_value as stripe_account_id
 				FROM {$wpdb->prefix}libookin_royalties r
 				INNER JOIN {$wpdb->users} u ON r.vendor_id = u.ID
+				LEFT JOIN {$wpdb->usermeta} um ON r.vendor_id = um.user_id AND um.meta_key = 'libookin_stripe_account_id'
 				WHERE r.payout_status = 'pending' 
-				AND r.created_at <= %s
+				AND r.created_at BETWEEN %s AND %s
 				AND um.meta_value IS NOT NULL
 				AND um.meta_value != ''
 				GROUP BY r.vendor_id
@@ -193,7 +194,8 @@ class Libookin_Payout_Scheduler {
 	private function schedule_payout_batch( $eligible_vendors ) {
 		$total_amount  = array_sum( array_column( $eligible_vendors, 'total_pending' ) );
 		$vendor_count  = count( $eligible_vendors );
-		$scheduled_time = time() + ( 6 * HOUR_IN_SECONDS ); // 6 hours delay
+		$scheduled_time = time() + ( 1 * MINUTE_IN_SECONDS ); // 1 minute delay FOR TESTING PURPOSES
+		// $scheduled_time = time() + ( 6 * HOUR_IN_SECONDS );
 
 		// Store batch data for processing
 		update_option( 'libookin_pending_payout_batch', array(
@@ -275,10 +277,11 @@ class Libookin_Payout_Scheduler {
 		$amount         = $vendor['total_pending'];
 		$stripe_account = $vendor['stripe_account_id'];
 
-		// Calculate period dates
-		$period_end   = new DateTime();
-		$period_start = clone $period_end;
-		$period_start->sub( new DateInterval( 'P2M' ) );
+		$period_start = new DateTime('first day of -3 months'); // 3 months ago
+		$period_start->setTime(0,0,0);
+
+		$period_end = new DateTime('last day of -3 months'); // 3 months ago
+		$period_end->setTime(23,59,59);
 
 		// Create Stripe payout
 		$payout_result = $stripe_manager->create_payout(

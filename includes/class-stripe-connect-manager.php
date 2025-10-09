@@ -467,9 +467,11 @@ class Libookin_Stripe_Connect_Manager {
 			array(
 				'vendor_id'     => $vendor_id,
 				'payout_status' => 'pending',
+				'created_at >= ' => $period_start,
+        		'created_at <= ' => $period_end,
 			),
 			array( '%s', '%s', '%s' ),
-			array( '%d', '%s' )
+			array( '%d', '%s', '%s', '%s' )
 		);
 
 		return false !== $updated;

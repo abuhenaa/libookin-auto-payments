@@ -180,7 +180,7 @@ class Libookin_Vendor_Dashboard {
 		$payout_history = $this->get_vendor_payout_history( $vendor_id );
 		//get order data and royalties
 		$order_data = $this->get_order_data_and_royalties( $vendor_id );
-		
+
 		?>
 		<div class="libookin-royalties-dashboard">
 			<div class="dokan-dashboard-header">
@@ -191,7 +191,7 @@ class Libookin_Vendor_Dashboard {
 			<div class="libookin-balance-overview">
 				<div class="balance-cards">
 					<div class="balance-card available">
-						<h3><?php esc_html_e( 'Available Balance', 'libookin-auto-payments' ); ?></h3>
+						<h3><?php esc_html_e( 'Available Balance (From Stripe)', 'libookin-auto-payments' ); ?></h3>
 						<div class="amount">€<?php echo esc_html( number_format( $balance_data['available'], 2 ) ); ?></div>
 						<p class="description"><?php esc_html_e( 'Ready for payout', 'libookin-auto-payments' ); ?></p>
 					</div>
@@ -257,16 +257,16 @@ class Libookin_Vendor_Dashboard {
 			<div class="libookin-next-payout">
 				<h3><?php esc_html_e( 'Next Payout Information', 'libookin-auto-payments' ); ?></h3>
 				<div class="payout-info">
-					<?php if ( $balance_data['available'] >= 15 ) : ?>
+					<?php if ( $sales_data['eligible_payouts'] >= 15 ) : ?>
 						<div class="payout-eligible">
 							<i class="fas fa-check-circle"></i>
 							<span><?php esc_html_e( 'Eligible for next payout', 'libookin-auto-payments' ); ?></span>
-							<strong>€<?php echo esc_html( number_format( $balance_data['available'], 2 ) ); ?></strong>
+							<strong>€<?php echo esc_html( number_format( $sales_data['eligible_payouts'], 2 ) ); ?></strong>
 						</div>
 					<?php else : ?>
 						<div class="payout-pending">
 							<i class="fas fa-clock"></i>
-							<span><?php printf( esc_html__( 'Need €%s more to reach minimum payout (€15)', 'libookin-auto-payments' ), number_format( 15 - $balance_data['available'], 2 ) ); ?></span>
+							<span><?php printf( esc_html__( 'Need €%s more to reach minimum payout (€15)', 'libookin-auto-payments' ), number_format( 15 -  $sales_data['eligible_payouts'], 2 ) ); ?></span>
 						</div>
 					<?php endif; ?>
 					<p class="next-date"><?php printf( esc_html__( 'Next payout date: %s', 'libookin-auto-payments' ), esc_html( $balance_data['next_payout_date'] ) ); ?></p>
@@ -547,7 +547,7 @@ class Libookin_Vendor_Dashboard {
 		}
 
 		// Get pending royalties (less than 2 months old)
-		$two_months_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-2 months' ) );
+		$two_months_ago = gmdate( 'Y-m-d H:i:s', strtotime( 'last day of -3 months' ) );
 		$pending_royalties = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT SUM(royalty_amount) FROM {$wpdb->prefix}libookin_royalties 
@@ -633,12 +633,32 @@ class Libookin_Vendor_Dashboard {
 
 			$royalties[] = floatval( $month_royalties );
 			$books_sold[] = intval( $month_books );
+
+			// Define the start and end of the month exactly two months ago
+			$start_date = new DateTime('first day of -3 months');
+			$start_date->setTime(0, 0, 0);
+			$end_date = new DateTime('last day of -3 months');
+			$end_date->setTime(23, 59, 59);
+
+			// Get formatted timestamps
+			$start = $start_date->format('Y-m-d H:i:s');
+			$end   = $end_date->format('Y-m-d H:i:s');
+			$eligible_payouts = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT SUM(royalty_amount) FROM {$wpdb->prefix}libookin_royalties 
+					WHERE vendor_id = %d AND payout_status = 'pending' AND created_at BETWEEN %s AND %s",
+					$vendor_id,
+					$start,
+					$end
+				)
+			);
 		}
 
 		return array(
 			'labels'     => $months,
 			'royalties'  => $royalties,
 			'books_sold' => $books_sold,
+			'eligible_payouts' => floatval( $eligible_payouts )
 		);
 	}
 
