@@ -635,9 +635,12 @@ class Libookin_Vendor_Dashboard {
 			$books_sold[] = intval( $month_books );
 
 			// Define the start and end of the month exactly two months ago
-			$start_date = new DateTime('first day of -3 months');
+			$current_date = Libookin_Auto_Payments::$current_date;
+			$start_date = clone $current_date;
+			$start_date->modify('first day of -3 months');
 			$start_date->setTime(0, 0, 0);
-			$end_date = new DateTime('last day of -3 months');
+			$end_date = clone $current_date;
+			$end_date->modify('last day of -3 months');
 			$end_date->setTime(23, 59, 59);
 
 			// Get formatted timestamps

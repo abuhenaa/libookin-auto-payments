@@ -125,10 +125,14 @@ class Libookin_Payout_Scheduler {
 	public function get_eligible_vendors() {
 		global $wpdb;
 
+		$current_date = Libookin_Auto_Payments::$current_date;
+
 		// Define the start and end of the month exactly two months ago
-		$start_date = new DateTime('first day of -3 months');
+		$start_date = clone $current_date;
+		$start_date->modify('first day of -3 months');
 		$start_date->setTime(0, 0, 0);
-		$end_date = new DateTime('last day of -3 months');
+		$end_date = clone $current_date;
+		$end_date->modify('last day of -3 months');
 		$end_date->setTime(23, 59, 59);
 
 		// Get formatted timestamps
@@ -277,10 +281,14 @@ class Libookin_Payout_Scheduler {
 		$amount         = $vendor['total_pending'];
 		$stripe_account = $vendor['stripe_account_id'];
 
-		$period_start = new DateTime('first day of -3 months'); // 3 months ago
+		$current_date = Libookin_Auto_Payments::$current_date; 
+
+		$period_start = clone $current_date;
+		$period_start->modify('first day of -3 months');
 		$period_start->setTime(0,0,0);
 
-		$period_end = new DateTime('last day of -3 months'); // 3 months ago
+		$period_end = clone $current_date;
+		$period_end->modify('last day of -3 months');
 		$period_end->setTime(23,59,59);
 
 		// Create Stripe payout

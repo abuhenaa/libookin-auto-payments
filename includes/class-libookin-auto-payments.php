@@ -26,6 +26,11 @@ class Libookin_Auto_Payments {
 	private static $instance = null;
 
 	/**
+	 * Current date for global use
+	 */
+	public static $current_date;
+
+	/**
 	 * Stripe Connect Manager instance
 	 *
 	 * @var Libookin_Stripe_Connect_Manager
@@ -66,6 +71,8 @@ class Libookin_Auto_Payments {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
+
+		self::$current_date = new DateTime(); // Set current date for global use
 		add_action( 'init', array( $this, 'init' ) );
 		add_action( 'wp_loaded', array( $this, 'init_classes' ) );
 	}
