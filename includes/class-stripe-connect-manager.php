@@ -454,23 +454,21 @@ class Libookin_Stripe_Connect_Manager {
 	public function mark_royalties_as_paid( $vendor_id, $payout_id, $period_start, $period_end ) {
 		global $wpdb;
 
-		$updated = $wpdb->update(
-			$wpdb->prefix . 'libookin_royalties',
-			array(
-				'payout_status'    => 'paid',
-				'stripe_payout_id' => $payout_id,
-				'payout_date'      => current_time( 'mysql' ),
-			),
-			array(
-				'vendor_id'     => $vendor_id,
-				'payout_status' => 'pending',
-				'created_at >= ' => $period_start,
-        		'created_at <= ' => $period_end,
-			),
-			array( '%s', '%s', '%s' ),
-			array( '%d', '%s', '%s', '%s' )
-		);
+		$table = $wpdb->prefix . 'libookin_royalties';
 
+		$updated = $wpdb->query(
+			$wpdb->prepare(
+				"UPDATE $table 
+				SET payout_status = 'paid', stripe_payout_id = %s, payout_date = %s 
+				WHERE vendor_id = %d AND payout_status = 'pending' 
+				AND created_at >= %s AND created_at <= %s",
+				$payout_id,
+				current_time( 'mysql' ),
+				$vendor_id,
+				$period_start,
+				$period_end
+			)
+		);
 		return false !== $updated;
 	}
 

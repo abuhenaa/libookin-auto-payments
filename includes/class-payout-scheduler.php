@@ -125,11 +125,20 @@ class Libookin_Payout_Scheduler {
 	public function get_eligible_vendors() {
 		global $wpdb;
 
-		// Define the start and end of the month exactly two months ago
-		$start_date = new DateTime('first day of -3 months');
+
+		$current_date = Libookin_Auto_Payments::$current_date; // Simulate August 1st, 2025
+		$start_date = clone $current_date;
+		$start_date->modify('first day of -3 months');
 		$start_date->setTime(0, 0, 0);
-		$end_date = new DateTime('last day of -3 months');
+		$end_date = clone $current_date;
+		$end_date->modify('last day of -3 months');
 		$end_date->setTime(23, 59, 59);
+
+		// // Define the start and end of the month exactly two months ago
+		// $start_date = new DateTime('first day of -3 months');
+		// $start_date->setTime(0, 0, 0);
+		// $end_date = new DateTime('last day of -3 months');
+		// $end_date->setTime(23, 59, 59);
 
 		// Get formatted timestamps
 		$start = $start_date->format('Y-m-d H:i:s');
@@ -194,7 +203,7 @@ class Libookin_Payout_Scheduler {
 	private function schedule_payout_batch( $eligible_vendors ) {
 		$total_amount  = array_sum( array_column( $eligible_vendors, 'total_pending' ) );
 		$vendor_count  = count( $eligible_vendors );
-		$scheduled_time = time() + ( 1 * MINUTE_IN_SECONDS ); // 1 minute delay FOR TESTING PURPOSES
+		$scheduled_time = time() + 5; // 5 seconds delay FOR TESTING PURPOSES
 		// $scheduled_time = time() + ( 6 * HOUR_IN_SECONDS );
 
 		// Store batch data for processing
@@ -277,70 +286,102 @@ class Libookin_Payout_Scheduler {
 		$amount         = $vendor['total_pending'];
 		$stripe_account = $vendor['stripe_account_id'];
 
-		$period_start = new DateTime('first day of -3 months'); // 3 months ago
-		$period_start->setTime(0,0,0);
+		$current_date = Libookin_Auto_Payments::$current_date; // For testing purposes, replace with new DateTime() for live
+		$period_start = clone $current_date;
+		$period_start->modify('first day of -3 months');
 
-		$period_end = new DateTime('last day of -3 months'); // 3 months ago
-		$period_end->setTime(23,59,59);
+		$period_start->setTime(0, 0, 0);
+		$period_end = clone $current_date;
+		$period_end->modify('last day of -3 months');
+		$period_end->setTime(23, 59, 59);
 
-		// Create Stripe payout
-		$payout_result = $stripe_manager->create_payout(
-			$stripe_account,
-			$amount,
-			array(
-				'vendor_id'    => $vendor_id,
-				'period_start' => $period_start->format( 'Y-m-d' ),
-				'period_end'   => $period_end->format( 'Y-m-d' ),
-				'royalty_count' => $vendor['royalty_count'],
-			)
-		);
-
-		if ( is_wp_error( $payout_result ) ) {
-			return array(
-				'success'    => false,
-				'vendor_id'  => $vendor_id,
-				'vendor_name' => $vendor['name'],
-				'amount'     => $amount,
-				'error'      => $payout_result->get_error_message(),
+		$stripe_manager->mark_royalties_as_paid(
+				$vendor_id,
+				'1',//$payout_result['payout_id'],
+				$period_start->format( 'Y-m-d' ),
+				$period_end->format( 'Y-m-d' )
 			);
-		}
 
-		// Record payout in database
+					// Record payout in database
 		$payout_id = $wpdb->insert(
 			$wpdb->prefix . 'libookin_payouts',
 			array(
 				'vendor_id'        => $vendor_id,
 				'amount'           => $amount,
 				'currency'         => 'EUR',
-				'stripe_payout_id' => $payout_result['payout_id'],
+				'stripe_payout_id' => '123', //$payout_result['payout_id'],
 				'stripe_account_id' => $stripe_account,
-				'status'           => $payout_result['status'],
+				'status'           => 'paid', //$payout_result['status'],
 				'period_start'     => $period_start->format( 'Y-m-d' ),
 				'period_end'       => $period_end->format( 'Y-m-d' ),
 			),
 			array( '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 
-		if ( $payout_id ) {
-			// Mark royalties as paid
-			$stripe_manager->mark_royalties_as_paid(
-				$vendor_id,
-				$payout_result['payout_id'],
-				$period_start->format( 'Y-m-d' ),
-				$period_end->format( 'Y-m-d' )
-			);
+		// $period_start = new DateTime('first day of -3 months'); // 3 months ago
+		// $period_start->setTime(0,0,0);
 
-			// Send vendor notification
-			$this->send_vendor_notification( $vendor, $payout_result, $period_start, $period_end );
-		}
+		// $period_end = new DateTime('last day of -3 months'); // 3 months ago
+		// $period_end->setTime(23,59,59);
+
+		// // Create Stripe payout
+		// $payout_result = $stripe_manager->create_payout(
+		// 	$stripe_account,
+		// 	$amount,
+		// 	array(
+		// 		'vendor_id'    => $vendor_id,
+		// 		'period_start' => $period_start->format( 'Y-m-d' ),
+		// 		'period_end'   => $period_end->format( 'Y-m-d' ),
+		// 		'royalty_count' => $vendor['royalty_count'],
+		// 	)
+		// );
+
+		// if ( is_wp_error( $payout_result ) ) {
+		// 	return array(
+		// 		'success'    => false,
+		// 		'vendor_id'  => $vendor_id,
+		// 		'vendor_name' => $vendor['name'],
+		// 		'amount'     => $amount,
+		// 		'error'      => $payout_result->get_error_message(),
+		// 	);
+		// }
+
+		// // Record payout in database
+		// $payout_id = $wpdb->insert(
+		// 	$wpdb->prefix . 'libookin_payouts',
+		// 	array(
+		// 		'vendor_id'        => $vendor_id,
+		// 		'amount'           => $amount,
+		// 		'currency'         => 'EUR',
+		// 		'stripe_payout_id' => $payout_result['payout_id'],
+		// 		'stripe_account_id' => $stripe_account,
+		// 		'status'           => $payout_result['status'],
+		// 		'period_start'     => $period_start->format( 'Y-m-d' ),
+		// 		'period_end'       => $period_end->format( 'Y-m-d' ),
+		// 	),
+		// 	array( '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s' )
+		// );
+
+		// if ( $payout_id ) {
+		// 	// Mark royalties as paid
+		// 	$stripe_manager->mark_royalties_as_paid(
+		// 		$vendor_id,
+		// 		$payout_result['payout_id'],
+		// 		$period_start->format( 'Y-m-d' ),
+		// 		$period_end->format( 'Y-m-d' )
+		// 	);
+
+		// 	// Send vendor notification
+		// 	$this->send_vendor_notification( $vendor, $payout_result, $period_start, $period_end );
+		// }
 
 		return array(
 			'success'     => true,
 			'vendor_id'   => $vendor_id,
 			'vendor_name' => $vendor['name'],
 			'amount'      => $amount,
-			'payout_id'   => $payout_result['payout_id'],
-			'status'      => $payout_result['status'],
+			'payout_id'   => '123', //$payout_result['payout_id'],
+			'status'      => 'paid'//$payout_result['status'],
 		);
 	}
 

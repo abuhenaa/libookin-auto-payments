@@ -26,6 +26,11 @@ class Libookin_Auto_Payments {
 	private static $instance = null;
 
 	/**
+	 * Store the datetime object for the current date
+	 */
+	public static $current_date;
+
+	/**
 	 * Stripe Connect Manager instance
 	 *
 	 * @var Libookin_Stripe_Connect_Manager
@@ -66,6 +71,11 @@ class Libookin_Auto_Payments {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
+
+		self::$current_date = new DateTime('2025-10-01'); // For testing purposes, replace with new DateTime() for live
+
+		//self::$current_date = new DateTime(); // Initialize current date
+
 		add_action( 'init', array( $this, 'init' ) );
 		add_action( 'wp_loaded', array( $this, 'init_classes' ) );
 	}

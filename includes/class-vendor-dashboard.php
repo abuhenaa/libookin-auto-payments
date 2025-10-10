@@ -634,11 +634,15 @@ class Libookin_Vendor_Dashboard {
 			$royalties[] = floatval( $month_royalties );
 			$books_sold[] = intval( $month_books );
 
+			$current_date = Libookin_Auto_Payments::$current_date; // For testing purposes, replace with new DateTime() for live
+			$start_date = (clone $current_date)->modify('first day of -3 months')->setTime(0, 0, 0);
+			$end_date = (clone $current_date)->modify('last day of -3 months')->setTime(23, 59, 59);
+
 			// Define the start and end of the month exactly two months ago
-			$start_date = new DateTime('first day of -3 months');
-			$start_date->setTime(0, 0, 0);
-			$end_date = new DateTime('last day of -3 months');
-			$end_date->setTime(23, 59, 59);
+			// $start_date = new DateTime('first day of -3 months');
+			// $start_date->setTime(0, 0, 0);
+			// $end_date = new DateTime('last day of -3 months');
+			// $end_date->setTime(23, 59, 59);
 
 			// Get formatted timestamps
 			$start = $start_date->format('Y-m-d H:i:s');
