@@ -148,7 +148,7 @@ class Libookin_Payout_Scheduler {
 					um.meta_value as stripe_account_id
 				FROM {$wpdb->prefix}libookin_royalties r
 				INNER JOIN {$wpdb->users} u ON r.vendor_id = u.ID
-				LEFT JOIN {$wpdb->usermeta} um ON r.vendor_id = um.user_id AND um.meta_key = 'libookin_stripe_account_id'
+				LEFT JOIN {$wpdb->usermeta} um ON r.vendor_id = um.user_id AND um.meta_key = 'stripe_connect_account_id'
 				WHERE r.payout_status = 'pending' 
 				AND r.created_at BETWEEN %s AND %s
 				AND um.meta_value IS NOT NULL
