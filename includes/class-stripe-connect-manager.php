@@ -266,13 +266,13 @@ class Libookin_Stripe_Connect_Manager {
 		}
 
 		try {
-			$payout = \Stripe\Payout::create(
+			$payout = \Stripe\Transfer::create(
 				array(
-					'amount'   => intval( $amount * 100 ), // Convert to cents
-					'currency' => 'eur',
-					'metadata' => $metadata,
+					'amount'      => intval( $amount * 100 ), // Convert to cents
+					'currency'    => 'eur',
+					'destination' => $account_id,
+					'metadata'    => $metadata,
 				),
-				array( 'stripe_account' => $account_id )
 			);
 
 			return array(
