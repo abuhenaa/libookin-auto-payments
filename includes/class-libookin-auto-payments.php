@@ -220,8 +220,8 @@ class Libookin_Auto_Payments {
 	 * @since 1.0.0
 	 * @param int $order_id The order ID.
 	 */
-	public function process_order_royalties( $order_id ) {
-		// Schedule async processing to avoid blocking the order completion
+	public function process_order_royalties( $order_id ) {		
+		//Schedule async processing to avoid blocking the order completion
 		if ( function_exists( 'as_schedule_single_action' ) ) {
 			as_schedule_single_action(
 				time() + 5,
@@ -250,9 +250,15 @@ class Libookin_Auto_Payments {
 		}
 
 		foreach ( $order->get_items() as $item ) {
-			$product_id = $item->get_product_id();
-			$product    = $item->get_product();
-			$price_ht   = $product->get_price_excluding_tax();
+			$product_id   = $item->get_product_id();
+			$product      = $item->get_product();
+
+			//stop processing if the product is a bundle product
+			if ( $product->get_type() == 'woosb' ) {
+				return;
+			}
+
+			$price_ht     = wc_get_price_excluding_tax( $product );		
 
 			// Apply promo discount if active
 			$promo_discount = floatval( get_post_meta( $product_id, '_libookin_promo_discount', true ) );
