@@ -252,9 +252,10 @@ class Libookin_Auto_Payments {
 		foreach ( $order->get_items() as $item ) {
 			$product_id   = $item->get_product_id();
 			$product      = $item->get_product();
+			$parent_id    = $item->get_meta( '_woosb_parent_id', true );
 
 			//stop processing if the product is a bundle product
-			if ( $product->get_type() == 'woosb' ) {
+			if ( $product->get_type() == 'woosb' || $parent_id ) {
 				return;
 			}
 

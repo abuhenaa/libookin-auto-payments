@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Libookin Auto Payments
  * Description: Automated Stripe Connect payments system for Libookin authors and publishers with royalty management.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Abu Hena
  * Author URI: https://profiles.wordpress.org/codexa
  * Text Domain: libookin-auto-payments
