@@ -92,4 +92,14 @@
         }
     });
 
+    //bundle product details
+    jQuery(document).ready(function($){
+    $(".libookin-bundle-product").on("click", function(){
+        var detailsRow = $(this).next(".libookin-bundle-details");
+        $(this).find("i").toggleClass("dashicons-plus dashicons-minus");
+            detailsRow.slideToggle(200);
+        });
+    });
+
+
 })(jQuery);

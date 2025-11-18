@@ -75,7 +75,6 @@ function libookin_render_royalty_summary_page() {
     echo '<h1>Résumé des redevances – Détail complet</h1>';
     echo '<a href="' . admin_url( 'admin.php?page=libookin-royalty-summary&libookin_export_csv=1' ) . '" class="button button-primary">Télécharger le CSV</a>';
     echo '<table class="widefat table-striped table-hover" style="margin-top:20px;"><thead><tr>
-        <th>Vendeur</th>
         <th>Vendeur Nom</th>
         <th>Produit</th>
         <th>Prix TTC (€)</th>
@@ -96,7 +95,7 @@ function libookin_render_royalty_summary_page() {
 
         //first checking if the rows has more than one row
         $total_vendors = count( $rows );
-        if( $total_vendors > 1 ) {
+        if( $total_vendors > 1 && !empty( $rows[0]->charity_name )  ) {
 
             $vendor_id = [];
             $vendors_products = [];
@@ -126,7 +125,8 @@ function libookin_render_royalty_summary_page() {
             $vendors_name = implode( "<br>", $vendors_names );
             $total_vendors += 1;
             $total_royalty = $royalty * $total_vendors;
-            echo "<tr><td>{$vendor_id}</td><td>{$vendors_name}</td><td>{$vendors_products}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}% x {$total_vendors}</td><td>{$total_royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
+            echo "<tr class='libookin-bundle-product'><td>" . __( "Bundle product", "libookin-auto-payments" ) . " <i class='dashicons dashicons-plus'></i></td></tr>";
+            echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}% x {$total_vendors}</td><td>{$total_royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
             
         }else{
             $vendor_info = $rows[0]->vendor_id;
@@ -158,7 +158,7 @@ function libookin_render_royalty_summary_page() {
             $total_net_margin += $net_margin;
             $order_id = $rows[0]->order_id;
 
-            echo "<tr><td>{$vendor_info}</td><td>{$vendor_name}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$rows[0]->created_at}</td></tr>";
+            echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$rows[0]->created_at}</td></tr>";
         }
     }
 

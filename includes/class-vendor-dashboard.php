@@ -233,8 +233,8 @@ class Libookin_Vendor_Dashboard {
 										<tr>
 											<td><?php echo $order->order_id; ?></td>
 											<td>
-												<?php echo $order->order_item_name; ?>
-												<span>x <?php echo $order->product_qty; ?></span>
+												<?php $product_title = get_the_title($order->product_id); ?>
+												<span><?php echo $product_title; ?></span>
 											</td>
 											<td><?php echo wc_price( $order->price_ht ); ?></td>
 											<td><?php echo wc_price( $order->royalty_amount ); ?></td>
@@ -386,12 +386,8 @@ class Libookin_Vendor_Dashboard {
 			r.royalty_percent,
 			r.royalty_amount,
 			r.payout_status,
-			r.created_at,
-			ot.order_item_name,
-			wop.product_qty
-			FROM {$wpdb->prefix}libookin_royalties r
-			INNER JOIN {$wpdb->prefix}woocommerce_order_items ot ON r.order_id = ot.order_id
-			LEFT JOIN {$wpdb->prefix}wc_order_product_lookup wop ON r.order_id = wop.order_id
+			r.created_at
+			FROM {$wpdb->prefix}libookin_royalties as r
 			WHERE r.vendor_id = %d
 			ORDER BY r.created_at DESC";
 

@@ -67,3 +67,17 @@
     background: #cce5ff;
     color: #004085;
 }
+
+tr.libookin-bundle-product:hover{
+    cursor: pointer;
+}
+tr.libookin-bundle-product td{
+    color: #2d35dc;
+}
+tr.libookin-bundle-details{
+    display: none;
+    transition: all 0.3s ease-in-out;
+}
+    
+
+    
