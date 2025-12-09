@@ -198,8 +198,8 @@ class Libookin_Payout_Scheduler {
 	private function schedule_payout_batch( $eligible_vendors ) {
 		$total_amount  = array_sum( array_column( $eligible_vendors, 'total_pending' ) );
 		$vendor_count  = count( $eligible_vendors );
-		$scheduled_time = time() + ( 1 * MINUTE_IN_SECONDS ); // 1 minute delay FOR TESTING PURPOSES
-		// $scheduled_time = time() + ( 6 * HOUR_IN_SECONDS );
+		//$scheduled_time = time() + ( 1 * MINUTE_IN_SECONDS ); // 1 minute delay FOR TESTING PURPOSES
+		$scheduled_time = time() + ( 6 * HOUR_IN_SECONDS );
 
 		// Store batch data for processing
 		update_option( 'libookin_pending_payout_batch', array(

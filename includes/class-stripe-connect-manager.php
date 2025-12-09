@@ -68,7 +68,7 @@ class Libookin_Stripe_Connect_Manager {
 		add_action( 'wp_ajax_create_stripe_connect_account', array( $this, 'ajax_create_connect_account' ) );
 		add_action( 'wp_ajax_get_stripe_account_status', array( $this, 'ajax_get_account_status' ) );
 		add_action( 'wp_ajax_get_stripe_balance', array( $this, 'ajax_get_stripe_balance' ) );
-		add_action( 'user_register', array( $this, 'maybe_create_connect_account' ) );
+		//add_action( 'user_register', array( $this, 'maybe_create_connect_account' ) );
 		add_action( 'wp_ajax_get_stripe_account_url', array( $this, 'ajax_get_stripe_account_url' ) );
 	}
 
