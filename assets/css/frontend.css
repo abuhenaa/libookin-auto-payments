@@ -7,7 +7,9 @@
     max-width: 1200px;
     margin: 0 auto;
 }
-
+.libookin-order-royalties-details {
+    padding: 30px 15px;
+}
 .libookin-balance-overview {
     margin-bottom: 30px;
 }

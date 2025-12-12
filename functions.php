@@ -41,12 +41,6 @@ function my_minimum_product_price_check( $product ) {
     }
 }
 
-// Remove Dokan's "Orders" tab from vendor dashboard
-add_filter( 'dokan_get_dashboard_nav', function ( $urls ) {
-    unset( $urls[ 'orders' ] );
-    return $urls;
-} );
-
 // Admin menu for royalty summary
 add_action( 'admin_menu', 'libookin_add_royalty_summary_menu' );
 function libookin_add_royalty_summary_menu() {

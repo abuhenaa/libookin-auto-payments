@@ -67,6 +67,8 @@ class Libookin_Vendor_Dashboard {
 	 */
 	public function remove_withdrawal_nav( $urls ) {
 		unset( $urls['withdraw'] );
+		unset( $urls['orders']);
+		unset( $urls['settings']['submenu']['payment'] );
 		return $urls;
 	}
 
@@ -215,6 +217,9 @@ class Libookin_Vendor_Dashboard {
 				<h3><?php esc_html_e( 'Order and Royalties Details', 'libookin-auto-payments' ); ?></h3>
 				<div class="order-royalties">
 					<div class="order-royalties-table">
+						<?php 
+							if( ! empty( $order_data)){
+						?>
 						<table>
 							<thead>
 								<tr>
@@ -228,7 +233,6 @@ class Libookin_Vendor_Dashboard {
 							</thead>
 							<tbody>
 								<?php
-								if( ! empty( $order_data)){
 									foreach ( $order_data as $order ) : ?>
 										<tr>
 											<td><?php echo $order->order_id; ?></td>
@@ -425,6 +429,7 @@ class Libookin_Vendor_Dashboard {
 					<div class="status-card needs-setup">
 						<h3><?php esc_html_e( 'Setup Required', 'libookin-auto-payments' ); ?></h3>
 						<p><?php esc_html_e( 'You need to set up your payment account to receive royalties.', 'libookin-auto-payments' ); ?></p>
+						<p><?php esc_html_e( 'The onboarding link is one time so make sure you complete it with phone and email at least.', 'libookin-auto-payments' ); ?></p>
 						<button id="create-stripe-account" class="button button-primary">
 							<?php esc_html_e( 'Setup Payment Account', 'libookin-auto-payments' ); ?>
 						</button>
