@@ -168,7 +168,12 @@
     max-width: 800px;
     margin: 0 auto;
 }
-
+button.lap-stripe-dashboard-link.button.button-primary {
+    padding: 15px;
+}
+a.lap-onboarding-link.button{
+    background-color: #322067;
+}
 .status-card {
     background: #fff;
     border: 1px solid #e1e5e9;

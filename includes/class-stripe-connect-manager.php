@@ -108,6 +108,7 @@ class Libookin_Stripe_Connect_Manager {
 					'email'        => $email,
 					'capabilities' => array(
 						'transfers' => array( 'requested' => true ),
+						'card_payments' => array( 'requested' => true ), 
 					),
 					'business_type' => 'individual',
 					'metadata'      => array(

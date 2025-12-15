@@ -467,11 +467,43 @@ class Libookin_Vendor_Dashboard {
 									<?php echo $account_details['payouts_enabled'] ? '✅' : '❌'; ?>
 								</span>
 							</div>
-							<div class="info-row">
-								<button class="lap-stripe-dashboard-link button button-primary">
-									<?php esc_html_e( 'Go to Stripe Dashboard', 'libookin-auto-payments' ); ?>
-								</button>
-							</div>
+							<?php
+							
+							if ( ! empty( $stripe_account_id ) ) {
+								$account_details = $stripe_manager->get_account_status( $stripe_account_id );
+								
+								if ( ! is_wp_error( $account_details ) ) {
+									// Check if onboarding is incomplete
+									if ( ! $account_details['details_submitted'] || ! empty( $account_details['requirements'] ) ) {
+										// Generate a new onboarding link
+										$onboarding_link = $stripe_manager->create_express_account_onboarding_link(
+											$stripe_account_id,
+											dokan_get_navigation_url( 'stripe-connect' ), // return URL
+											dokan_get_navigation_url( 'stripe-connect' )  // refresh URL
+										);
+										
+										if ( ! is_wp_error( $onboarding_link ) ) {
+											// Show "Complete Onboarding" button
+											echo '<div class="notice notice-warning">';
+											echo '<p>' . __( 'Please complete your Stripe account setup to receive payments.', 'libookin-auto-payments' ) . '</p>';
+											echo '<a href="' . esc_url( $onboarding_link['onboarding_url'] ) . '" class="lap-onboarding-link button button-primary">';
+											echo __( 'Complete Onboarding', 'libookin-auto-payments' );
+											echo '</a>';
+											echo '</div>';
+										}
+									}else{
+										?>
+
+									<div class="info-row">
+										<button class="lap-stripe-dashboard-link button button-primary">
+											<?php esc_html_e( 'Go to Stripe Dashboard', 'libookin-auto-payments' ); ?>
+										</button>
+									</div>
+										<?php
+									}
+								}
+							}
+							?>
 						</div>
 
 						<?php if ( ! empty( $account_details['requirements'] ) ) : ?>
