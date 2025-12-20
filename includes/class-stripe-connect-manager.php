@@ -107,8 +107,10 @@ class Libookin_Stripe_Connect_Manager {
 					'country'      => $country,
 					'email'        => $email,
 					'capabilities' => array(
-						'transfers' => array( 'requested' => true ),
-						'card_payments' => array( 'requested' => true ), 
+						'transfers' => array( 'requested' => true ), 
+					),
+					'tos_acceptance' => array(
+						'service_agreement' => 'recipient',
 					),
 					'business_type' => 'individual',
 					'metadata'      => array(
@@ -330,7 +332,9 @@ class Libookin_Stripe_Connect_Manager {
 		$result = $this->create_connect_account( $user_id );
 		
 		if ( is_wp_error( $result ) ) {
-			error_log( 'Failed to create Stripe Connect account for user ' . $user_id . ': ' . $result->get_error_message() );
+			error_log( 'Failed to cre
+			
+			ate Stripe Connect account for user ' . $user_id . ': ' . $result->get_error_message() );
 		}
 	}
 
@@ -347,7 +351,7 @@ class Libookin_Stripe_Connect_Manager {
 		}
 
 		$vendor_id = get_current_user_id();
-		$country   = sanitize_text_field( $_POST['country'] ?? 'FR' );
+		$country   = dokan_get_store_info( $vendor_id )['address']['country'] ?? 'FR';
 		$email     = get_user_by( 'ID', $vendor_id )->user_email;
 
 		//Create connect account
