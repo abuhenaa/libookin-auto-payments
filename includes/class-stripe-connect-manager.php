@@ -109,9 +109,6 @@ class Libookin_Stripe_Connect_Manager {
 					'capabilities' => array(
 						'transfers' => array( 'requested' => true ), 
 					),
-					'tos_acceptance' => array(
-						'service_agreement' => 'recipient',
-					),
 					'business_type' => 'individual',
 					'metadata'      => array(
 						'vendor_id'   => $vendor_id,
