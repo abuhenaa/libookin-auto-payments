@@ -565,7 +565,7 @@ class Libookin_Vendor_Dashboard {
 	 */
 	private function get_vendor_balance_data( $vendor_id ) {
 		global $wpdb;
-
+		
 		// Get Stripe Connect account
 		$stripe_account_id = get_user_meta( $vendor_id, 'stripe_connect_account_id', true );
 		$available_balance = 0;

@@ -209,11 +209,12 @@ class Libookin_Stripe_Connect_Manager {
 		}
 
 		try {
-			$balance = \Stripe\Balance::retrieve(
-				array(),
-				array( 'stripe_account' => $account_id )
-			);
+			$stripe = new \Stripe\StripeClient( $this->stripe_secret_key );
 
+			$balance = $stripe->balance->retrieve(
+				[],
+				['stripe_account' => $account_id]
+			);
 			$available_amount = 0;
 			$pending_amount   = 0;
 
@@ -240,6 +241,7 @@ class Libookin_Stripe_Connect_Manager {
 				'available' => $available_amount,
 				'pending'   => $pending_amount,
 				'currency'  => 'EUR',
+				'raw_balance' => $balance,
 			);
 
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
@@ -266,7 +268,9 @@ class Libookin_Stripe_Connect_Manager {
 		}
 
 		try {
-			$payout = \Stripe\Transfer::create(
+			$stripe = new \Stripe\StripeClient( $this->stripe_secret_key );
+
+			$transfer = $stripe->transfers->create(
 				array(
 					'amount'      => intval( $amount * 100 ), // Convert to cents
 					'currency'    => 'eur',
@@ -277,10 +281,10 @@ class Libookin_Stripe_Connect_Manager {
 
 			return array(
 				'success'   => true,
-				'payout_id' => $payout->id,
+				'payout_id' => $transfer->id,
 				'amount'    => $amount,
-				'status'    => $payout->status,
-				'arrival_date' => $payout->arrival_date,
+				'status'    => $transfer->status,
+				'arrival_date' => $transfer->arrival_date,
 			);
 
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
