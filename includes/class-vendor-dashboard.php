@@ -207,7 +207,7 @@ class Libookin_Vendor_Dashboard {
 					<div class="balance-card total">
 						<h3><?php esc_html_e( 'Total Earned', 'libookin-auto-payments' ); ?></h3>
 						<div class="amount">€<?php echo esc_html( number_format( $balance_data['total_year'], 2 ) ); ?></div>
-						<p class="description"><?php echo esc_html( $balance_data['books_sold'] ); ?> <?php esc_html_e( 'books sold', 'libookin-auto-payments' ); ?></p>
+						
 					</div>
 				</div>
 			</div>
@@ -601,21 +601,21 @@ class Libookin_Vendor_Dashboard {
 			)
 		);
 
-		// Get books sold count
-		$books_sold = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT product_id) FROM {$wpdb->prefix}libookin_royalties 
-				WHERE vendor_id = %d AND created_at >= %s",
-				$vendor_id,
-				$year_start
-			)
-		);
+		// // Get books sold count
+		// $books_sold = $wpdb->get_var(
+		// 	$wpdb->prepare(
+		// 		"SELECT COUNT(DISTINCT product_id) FROM {$wpdb->prefix}libookin_royalties 
+		// 		WHERE vendor_id = %d AND created_at >= %s",
+		// 		$vendor_id,
+		// 		$year_start
+		// 	)
+		// );
 
 		return array(
 			'available'        => floatval( $available_balance ),
 			'pending'          => floatval( $pending_royalties ),
 			'total_year'       => floatval( $total_year ),
-			'books_sold'       => intval( $books_sold ),
+			//'books_sold'       => intval( $books_sold ),
 			'next_payout_date' => $this->get_next_payout_date(),
 		);
 	}

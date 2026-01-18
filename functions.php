@@ -104,9 +104,9 @@ function libookin_render_royalty_summary_page() {
                 $ht          = floatval( $row->price_ht );
                 $royalty     = floatval( $row->royalty_amount );
                 $percent     = floatval( $row->royalty_percent );
-                $vat         = round( $ht * 0.055, 2 );
-                $ttc         = round( $ht + $vat, 2 );
-                $stripe_fee  = round( ( $ttc * 0.014 ) + 0.25, 2 );
+                $vat         =  $ht * 0.055;
+                $ttc         =  $ht + $vat;
+                $stripe_fee  = ( $ttc * 0.014 ) + 0.25;
                 $net_margin  = round( $ht - ($royalty * ($total_vendors + 1)) - $stripe_fee, 2 );
                 
                 
@@ -120,7 +120,12 @@ function libookin_render_royalty_summary_page() {
             $total_vendors += 1;
             $total_royalty = $royalty * $total_vendors;
             echo "<tr class='libookin-bundle-product'><td>" . __( "Bundle product", "libookin-auto-payments" ) . " <i class='dashicons dashicons-plus'></i></td></tr>";
-            echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}% x {$total_vendors}</td><td>{$total_royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$row->created_at}</td></tr>";
+            echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>". round( $ttc, 2 )."</td><td>{$vat}</td><td>". round( $ht, 2 )."</td><td>{$percent}% x {$total_vendors}</td><td> " . round( $total_royalty, 2 ). "</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
+
+            $total_sales += $ttc;
+            $total_royalties += $royalty;
+            $total_stripe_fees += $stripe_fee;
+            $total_net_margin += $net_margin;
             
         }else{
             $vendor_info = $rows[0]->vendor_id;
@@ -130,10 +135,10 @@ function libookin_render_royalty_summary_page() {
             $ht          = floatval( $rows[0]->price_ht );
             $royalty     = floatval( $rows[0]->royalty_amount );
             $percent     = floatval( $rows[0]->royalty_percent );
-            $vat         = round( $ht * 0.055, 2 );
-            $ttc         = round( $ht + $vat, 2 );
-            $stripe_fee  = round( ( $ttc * 0.014 ) + 0.25, 2 );
-            $net_margin  = round( $ht - $royalty - $stripe_fee, 2 );
+            $vat         = $ht * 0.055;
+            $ttc         = $ht + $vat;
+            $stripe_fee  = ( $ttc * 0.014 ) + 0.25;
+            $net_margin  = $ht - $royalty - $stripe_fee;
             $month       = date( 'Y-m', strtotime( $rows[0]->created_at ) );
             if ( !isset( $monthly_data[ $month ] ) ) {
                 $monthly_data[ $month ] = [
@@ -146,18 +151,19 @@ function libookin_render_royalty_summary_page() {
             $monthly_data[ $month ][ 'royalties' ] += $royalty;
             $monthly_data[ $month ][ 'margin' ] += $net_margin;
 
-            $total_sales += $ht;
+            $total_sales += $ttc;
             $total_royalties += $royalty;
             $total_stripe_fees += $stripe_fee;
             $total_net_margin += $net_margin;
             $order_id = $rows[0]->order_id;
 
-            echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>{$ttc}</td><td>{$vat}</td><td>{$ht}</td><td>{$percent}%</td><td>{$royalty}</td><td>{$stripe_fee}</td><td>{$net_margin}</td><td>{$rows[0]->created_at}</td></tr>";
+            echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}%</td><td>". round( $royalty, 2 )."</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$rows[0]->created_at}</td></tr>";
         }
     }
 
     echo '</tbody></table><h2>Résumé global</h2><table class="widefat"><tbody>';
-    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( $total_sales, 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total TTC</strong></td><td>€ " . number_format( ($total_sales + ($total_sales * 0.055 ) - $total_stripe_fees), 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( ($total_sales - $total_stripe_fees), 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Droits</strong></td><td>€ " . number_format( $total_royalties, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Stripe</strong></td><td>€ " . number_format( $total_stripe_fees, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Marge nette</strong></td><td>€ " . number_format( $total_net_margin, 2 ) . "</td></tr>";

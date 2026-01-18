@@ -307,6 +307,17 @@ a.lap-onboarding-link.button{
     color: #6c757d;
 }
 
+/* Custom CSS */
+#dokan-analytics-app .woocommerce-summary.has-5-items {
+    grid-template-columns: repeat(3, 1fr);
+}
+.woocommerce-summary.has-5-items .woocommerce-summary__item-container:nth-child(1),
+.woocommerce-summary.has-5-items .woocommerce-summary__item-container:nth-child(2), 
+.dokan-analytics-vendor-earning-section {
+    display: none;
+}
+
+
 /* Responsive design */
 @media (max-width: 768px) {
     .balance-cards {
