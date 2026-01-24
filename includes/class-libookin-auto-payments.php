@@ -104,10 +104,10 @@ class Libookin_Auto_Payments {
         add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 
 		// Initialize hooks for royalty processing
-        add_action( 'woocommerce_order_status_completed', array( $this, 'process_order_royalties' ) );
-        //add_action( 'woocommerce_thankyou', array( $this, 'process_royalties_immediate' ) );
+        //add_action( 'woocommerce_order_status_completed', array( $this, 'process_order_royalties' ) );
+        add_action( 'woocommerce_thankyou', array( $this, 'process_royalties_immediate' ) );
 
-		add_action( 'libookin_process_royalties_async', array( $this, 'process_royalties_immediate' ), 10, 1 );
+		//add_action( 'libookin_process_royalties_async', array( $this, 'process_royalties_immediate' ), 10, 1 );
         // Add custom user meta fields for Stripe Connect
         add_action( 'show_user_profile', array( $this, 'add_stripe_connect_fields' ) );
         add_action( 'edit_user_profile', array( $this, 'add_stripe_connect_fields' ) );
@@ -255,68 +255,103 @@ class Libookin_Auto_Payments {
         global $wpdb;
 
         $order         = wc_get_order( $order_id );
-        $parent_id     = $order->get_parent_id();
-		//skip loop if order is parent order because of multiple vendors
-        $has_sub_order = $order->get_meta( 'has_sub_order', true );
-        if ( ! $order || $has_sub_order ) {
-            return;
-        }
-
         foreach ( $order->get_items() as $item ) {
             $product_id = $item->get_product_id();
             $product    = $item->get_product();
-            $parent_id  = $item->get_meta( '_woosb_parent_id', true );
+            $parent_id  = $item->get_meta( '_woosb_parent_id', true );            
+            $price_ht   = $item->get_total();
+            $authors_percentage  = 50;
+            $platform_percentage = 40;
+            $charity_percentage  = 10;
+            $authors_amount      = $price_ht * ( $authors_percentage / 100 );
+            $platform_amount     = $price_ht * ( $platform_percentage / 100 );
+            $charity_amount      = $price_ht * ( $charity_percentage / 100 );
+            $per_author          = $authors_amount / 5;
+            //get all the vendors info in the bundle product
+            $charity_id   = get_post_meta( $product_id, '_libookin_charity', true );
+            $charity_name = get_the_title( $charity_id );
+            //stop processing if the product is a bundle product
+            if ( $product->get_type() == 'woosb' ) {            
+                //insert charity earnings
+                $wpdb->insert(
+                    $wpdb->prefix . 'libookin_charity_earnings',
+                    array(
+                        'order_id'       => $order_id,
+                        'product_id'     => $product_id,
+                        'charity_id'     => $charity_id,
+                        'charity_name'   => $charity_name,
+                        'amount'         => $charity_amount,
+                        'month_year'     => date( 'Y-m' ),
+                        'created_at'     => current_time( 'mysql' ),
+                    ),
+                    array( '%d', '%d', '%d', '%s', '%f', '%s', '%s' )
+                );            
+                
+            }else if ( $parent_id ) {
+                //add royalties for each selected vendors for the bundle product
+                $bundle_product_ht_price = wc_get_price_excluding_tax( wc_get_product( $parent_id ) );
+                $authors_percentage  = 50;
+                $platform_percentage = 40;
+                $charity_percentage  = 10;
+                $authors_amount      = $bundle_product_ht_price * ( $authors_percentage / 100 );
+                $platform_amount     = $bundle_product_ht_price * ( $platform_percentage / 100 );
+                $charity_amount      = $bundle_product_ht_price * ( $charity_percentage / 100 );
+                $per_author          = $authors_amount / 5;
+                //get parent bundle product price ht
+                $vendor_id = get_post_field('post_author', $product_id);
+                // Insert royalty record
+                $wpdb->insert(
+                    $wpdb->prefix . 'libookin_royalties',
+                array(
+                    'order_id'        => $order_id,
+                    'product_id'      => $product_id,
+                    'vendor_id'       => $vendor_id,
+                    'price_ht'        => $bundle_product_ht_price,
+                    'royalty_percent' => 10,
+                    'royalty_amount'  => $per_author,
+                    'created_at'      => current_time( 'mysql' ),
+                    'payout_status'   => 'pending',
+                ),
+                array( '%d', '%d', '%d', '%f', '%f', '%f', '%s', '%s' )
+                );
+            } else {
 
-//stop processing if the product is a bundle product
-            if ( $product->get_type() == 'woosb' || $parent_id ) {
-                return;
+                $price_ht = wc_get_price_excluding_tax( $product );
+                // Apply promo discount if active
+                $promo_discount = floatval( get_post_meta( $product_id, '_libookin_promo_discount', true ) );
+                $promo_end_date = get_post_meta( $product_id, '_libookin_promo_end_date', true );
+                $current_date   = gmdate( 'Y-m-d' );
+
+                if ( $promo_discount > 0 && $promo_end_date && $current_date <= $promo_end_date ) {
+                    $price_ht *= ( 100 - $promo_discount ) / 100;
+                }
+
+                // Calculate royalty percentage based on tiered structure
+                $royalty_percent = $this->calculate_royalty_percentage( $price_ht );
+                $royalty_amount  = ( $price_ht * $royalty_percent ) / 100;
+                $vendor_id       = get_post_field( 'post_author', $product_id );
+
+                // Insert royalty record
+
+                $wpdb->insert(
+                    $wpdb->prefix . 'libookin_royalties',
+                    array(
+                        'order_id'        => $order_id,
+                        'product_id'      => $product_id,
+                        'vendor_id'       => $vendor_id,
+                        'price_ht'        => $price_ht,
+                        'royalty_percent' => $royalty_percent,
+                        'royalty_amount'  => $royalty_amount,
+                        'created_at'      => current_time( 'mysql' ),
+                        'payout_status'   => 'pending',
+                    ),
+
+                    array( '%d', '%d', '%d', '%f', '%f', '%f', '%s', '%s' )
+                );
             }
 
-            $price_ht = wc_get_price_excluding_tax( $product );
-
-            // Apply promo discount if active
-            $promo_discount = floatval( get_post_meta( $product_id, '_libookin_promo_discount', true ) );
-            $promo_end_date = get_post_meta( $product_id, '_libookin_promo_end_date', true );
-            $current_date   = gmdate( 'Y-m-d' );
-
-            if ( $promo_discount > 0 && $promo_end_date && $current_date <= $promo_end_date ) {
-                $price_ht *= ( 100 - $promo_discount ) / 100;
-            }
-
-            // Calculate royalty percentage based on tiered structure
-            $royalty_percent = $this->calculate_royalty_percentage( $price_ht );
-            $royalty_amount  = ( $price_ht * $royalty_percent ) / 100;
-            $vendor_id       = get_post_field( 'post_author', $product_id );
-
-			// Insert royalty record
-
-			$wpdb->insert(
-
-				$wpdb->prefix . 'libookin_royalties',
-
-		array(
-
-			'order_id'        => $order_id,
-
-			'product_id'      => $product_id,
-
-			'vendor_id'       => $vendor_id,
-
-			'price_ht'        => $price_ht,
-
-			'royalty_percent' => $royalty_percent,
-
-			'royalty_amount'  => $royalty_amount,
-
-			'created_at'      => current_time( 'mysql' ),
-
-			'payout_status'   => 'pending',
-
-		),
-
-		array( '%d', '%d', '%d', '%f', '%f', '%f', '%s', '%s' )
-				);
-			}
+           
+		}
 
     }
 
@@ -499,12 +534,9 @@ class Libookin_Auto_Payments {
 
     //flush rewrite rules if transient is set
     public function maybe_flush_rewrite_rules() {
-
         if ( get_transient( 'libookin_flush_rewrite_rules' ) ) {
             flush_rewrite_rules();
             delete_transient( 'libookin_flush_rewrite_rules' );
         }
-
     }
-
 }

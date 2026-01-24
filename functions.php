@@ -157,7 +157,7 @@ function libookin_render_royalty_summary_page() {
             $total_net_margin += $net_margin;
             $order_id = $rows[0]->order_id;
 
-            echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}%</td><td>". round( $royalty, 2 )."</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$rows[0]->created_at}</td></tr>";
+            echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}%</td><td>". round( $royalty, 2 )."</td><td>". $stripe_fee ."</td><td> ". round( $net_margin, 2 )."</td><td>{$rows[0]->created_at}</td></tr>";
         }
     }
 
