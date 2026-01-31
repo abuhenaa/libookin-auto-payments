@@ -62,7 +62,7 @@ function libookin_render_royalty_summary_page() {
     $charity_table = $wpdb->prefix . 'libookin_charity_earnings';
     $results = $wpdb->get_results( "SELECT r.*, c.charity_name FROM $table as r LEFT JOIN $charity_table as c ON r.order_id = c.order_id ORDER BY r.created_at DESC" );
 
-    $total_sales  = $total_royalties  = $total_stripe_fees  = $total_net_margin  = 0;
+    $total_sales = $total_vat  = $total_royalties  = $total_stripe_fees  = $total_net_margin  = 0;
     $monthly_data = [  ];
 
     echo '<div class="wrap">';
@@ -89,31 +89,40 @@ function libookin_render_royalty_summary_page() {
         $bundled_product_ids = array();
         $normal_product_ids  = array();
         $main_bundled_id     = '';
-        $order_items         = wc_get_order( $order_id );
+        $order              = wc_get_order( $order_id );
+        $order_total        = $order ? $order->get_total() : 0;
 
-        if( $order_items === false ) {
+        if( ! $order ) {
             continue;
         }
+        $order_stripe_fee = $order ? (float) $order->get_meta( '_stripe_fee' ) : 0;
 
-        $order_items = $order_items->get_items();
-        foreach ( $order_items as $item_id => $item ) {
+        // build a map of order items by product id so we can access tax amounts per item later
+        $order_items_map = [];
+        $order_items_array = $order ? $order->get_items() : [];
+
+        foreach ( $order_items_array as $item_id => $item ) {
             $product_id = $item->get_product_id();
-            if( $item->get_meta( '_woosb_ids' ) ) {
-                $main_bundled_id = $product_id;
-            }
             $bundled_item = $item->get_meta( '_woosb_parent_id' );
+            $order_items_map[ $product_id ] = $item;
+
+            if( $item->get_meta( '_woosb_ids' ) ) {
+                $main_bundled_id = $product_id;                
+            }
+
             if ( !empty( $bundled_item ) ) {
                 $bundled_product_ids[] = $product_id;
             } else if ( $product_id != $main_bundled_id ) {
-                $normal_product_ids[] = $product_id;
+                $normal_product_ids[] = $product_id;                
             }
-        }
+        }        
 
         //map rows by product id for easy access
         $rows_by_product = [];
         foreach( $rows as $row ) {
             $rows_by_product[ $row->product_id ] = $row;
         }
+
         //first checking if the rows has more than one row
         $total_vendors = count( $bundled_product_ids );
         if( ! empty( $bundled_product_ids ) && !empty( $rows[0]->charity_name )  ) {
@@ -123,7 +132,7 @@ function libookin_render_royalty_summary_page() {
             $vendors_names    = [];
 
             //Main bundle product title
-            $main_bundle_title = get_the_title( $main_bundled_id );
+            $main_bundle_title = get_the_title( $main_bundled_id );           
 
             foreach ( $bundled_product_ids as $product_id ) {
                 $row = $rows_by_product[ $product_id ];
@@ -134,18 +143,30 @@ function libookin_render_royalty_summary_page() {
                 }
 
                 //add user names
-                $vendor_id[] = $row->vendor_id;
+                $vendor_id[]     = $row->vendor_id;
                 $vendors_names[] = get_user_by( 'id', $row->vendor_id )->display_name;
-                $product_id  = intval( $row->product_id );
+                $product_id      = intval( $row->product_id );
                 $vendors_products[] = get_the_title( $product_id );
-                $ht          = floatval( $row->price_ht );
-                $royalty     = floatval( $row->royalty_amount );
-                $percent     = floatval( $row->royalty_percent );
-                $vat         =  $ht * 0.055;
-                $ttc         =  $ht + $vat;
-                $stripe_fee  = ( $ttc * 0.014 ) + 0.25;
+                $ht              = floatval( $row->price_ht );
+                $royalty         = floatval( $row->royalty_amount );
+                $percent         = floatval( $row->royalty_percent );
+
+                // try to read actual tax amount from the matching order item if available
+                $order_item = isset( $order_items_map[ $product_id ] ) ? $order_items_map[ $product_id ] : null;
+                $item_tax = 0;
+                if ( $order_item ) {
+                    $taxes = $order_item->get_taxes();
+                    if ( isset( $taxes['total'] ) && is_array( $taxes['total'] ) ) {
+                        foreach ( $taxes['total'] as $t ) {
+                            $item_tax += (float) $t;
+                        }
+                    }
+                }
+                $vat         = $item_tax;
+                $ttc         = $ht + $vat;
+                $stripe_fee  = $order_total > 0 ? ( ( $ttc / $order_total ) * $order_stripe_fee ) : 0;
+                $stripe_fee  = $stripe_fee;
                 $net_margin  = round( $ht - ($royalty * ($total_vendors + 1)) - $stripe_fee, 2 );
-                
                 
             }
             //convert vendors products to normal multi line text
@@ -157,15 +178,30 @@ function libookin_render_royalty_summary_page() {
             $total_vendors += 1;
             $total_royalty = $royalty * $total_vendors;
             echo "<tr class='libookin-bundle-product'><td>" . $main_bundle_title . " ( " . __( "Bundle product )", "libookin-auto-payments" ) . " <i class='dashicons dashicons-plus'></i></td></tr>";
-            echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>". round( $ttc, 2 )."</td><td>{$vat}</td><td>". round( $ht, 2 )."</td><td>{$percent}% x {$total_vendors}</td><td> " . round( $total_royalty, 2 ). "</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
+            echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}% x {$total_vendors}</td><td> " . round( $total_royalty, 2 ). "</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
+
+            //add to monthly data
+            $month = date( 'Y-m', strtotime( $row->created_at ) );
+
+            if ( !isset( $monthly_data[ $month ] ) ) {
+                $monthly_data[ $month ] = [
+                    'sales'     => 0,
+                    'royalties' => 0,
+                    'margin'    => 0,
+                ];
+            }
+            $monthly_data[ $month ][ 'sales' ] += $ht;
+            $monthly_data[ $month ][ 'royalties' ] += $royalty;
+            $monthly_data[ $month ][ 'margin' ] += $net_margin;
+
 
             $total_sales += $ttc;
             $total_royalties += $royalty;
             $total_stripe_fees += $stripe_fee;
             $total_net_margin += $net_margin;
-            
+            $total_vat += $vat;
         }
-        
+
         if( ! empty( $normal_product_ids ) ) {
 
             foreach ( $normal_product_ids as $product_id ) {
@@ -182,9 +218,21 @@ function libookin_render_royalty_summary_page() {
                 $ht          = floatval( $row->price_ht );
                 $royalty     = floatval( $row->royalty_amount );
                 $percent     = floatval( $row->royalty_percent );
-                $vat         = $ht * 0.055;
+                // try to read actual tax amount from the matching order item if available
+                $order_item = isset( $order_items_map[ $product_id ] ) ? $order_items_map[ $product_id ] : null;
+                $item_tax = 0;
+                if ( $order_item ) {
+                    $taxes = $order_item->get_taxes();
+                    if ( isset( $taxes['total'] ) && is_array( $taxes['total'] ) ) {
+                        foreach ( $taxes['total'] as $t ) {
+                            $item_tax += (float) $t;
+                        }
+                    }
+                }
+                $vat         = $item_tax;
                 $ttc         = $ht + $vat;
-                $stripe_fee  = ( $ttc * 0.014 ) + 0.25;
+                $stripe_fee  = $order_total > 0 ? ( ( $ttc / $order_total ) * $order_stripe_fee ) : 0;
+                $stripe_fee  =  $stripe_fee;
                 $net_margin  = $ht - $royalty - $stripe_fee;
                 $month       = date( 'Y-m', strtotime( $row->created_at ) );
                 if ( !isset( $monthly_data[ $month ] ) ) {
@@ -202,19 +250,21 @@ function libookin_render_royalty_summary_page() {
                 $total_royalties += $royalty;
                 $total_stripe_fees += $stripe_fee;
                 $total_net_margin += $net_margin;
+                $total_vat += $vat;
                 $order_id = $rows[0]->order_id;
 
-                echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}%</td><td>". round( $royalty, 2 )."</td><td>". $stripe_fee ."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
+                echo "<tr><td>{$vendor_name}</td><td>{$product_id}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}%</td><td>". round( $royalty, 2 )."</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
         
             }
         }
     }
 
     echo '</tbody></table><h2>Résumé global</h2><table class="widefat"><tbody>';
-    echo "<tr><td><strong>Total TTC</strong></td><td>€ " . number_format( ($total_sales + ($total_sales * 0.055 ) - $total_stripe_fees), 2 ) . "</td></tr>";
-    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( ($total_sales - $total_stripe_fees), 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total TTC</strong></td><td>€ " . number_format( ($total_sales + $total_vat - $total_stripe_fees), 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( ($total_sales), 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Droits</strong></td><td>€ " . number_format( $total_royalties, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Stripe</strong></td><td>€ " . number_format( $total_stripe_fees, 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total TVA</strong></td><td>€ " . number_format( $total_vat, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Marge nette</strong></td><td>€ " . number_format( $total_net_margin, 2 ) . "</td></tr>";
     echo '</tbody></table>';
 
