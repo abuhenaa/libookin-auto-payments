@@ -63,7 +63,7 @@ function libookin_render_royalty_summary_page() {
     $results = $wpdb->get_results( "SELECT r.*, c.charity_name FROM $table as r LEFT JOIN $charity_table as c ON r.order_id = c.order_id ORDER BY r.created_at DESC" );
 
     $total_sales = $total_vat  = $total_royalties  = $total_stripe_fees  = $total_net_margin  = 0;
-    $monthly_data = [  ];
+    $monthly_data = [];
 
     echo '<div class="wrap">';
     echo '<h1>Résumé des redevances – Détail complet</h1>';
@@ -152,15 +152,15 @@ function libookin_render_royalty_summary_page() {
                 $percent         = floatval( $row->royalty_percent );
 
                 // try to read actual tax amount from the matching order item if available
-                $order_item = isset( $order_items_map[ $product_id ] ) ? $order_items_map[ $product_id ] : null;
+                $order_item = isset( $order_items_map[ $product_id ] ) ? $order_items_map[ $main_bundled_id ] : null;
                 $item_tax = 0;
-                if ( $order_item ) {
+                if ( $order_item ) {                      
                     $taxes = $order_item->get_taxes();
                     if ( isset( $taxes['total'] ) && is_array( $taxes['total'] ) ) {
                         foreach ( $taxes['total'] as $t ) {
                             $item_tax += (float) $t;
                         }
-                    }
+                    }                    
                 }
                 $vat         = $item_tax;
                 $ttc         = $ht + $vat;
@@ -177,7 +177,7 @@ function libookin_render_royalty_summary_page() {
             $vendors_name = implode( "<br>", $vendors_names );
             $total_vendors += 1;
             $total_royalty = $royalty * $total_vendors;
-            echo "<tr class='libookin-bundle-product'><td>" . $main_bundle_title . " ( " . __( "Bundle product )", "libookin-auto-payments" ) . " <i class='dashicons dashicons-plus'></i></td></tr>";
+            echo "<tr class='libookin-bundle-product'><td>" . __( "Bundle product", "libookin-auto-payments" ) . " <i class='dashicons dashicons-plus'></i></td></tr>";
             echo "<tr class='libookin-bundle-details'><td>{$vendors_name}</td><td>{$vendors_products}</td><td>". round( $ttc, 2 )."</td><td>". round( $vat, 2 )."</td><td>". round( $ht, 2 )."</td><td>{$percent}% x {$total_vendors}</td><td> " . round( $total_royalty, 2 ). "</td><td>". round( $stripe_fee, 2 )."</td><td> ". round( $net_margin, 2 )."</td><td>{$row->created_at}</td></tr>";
 
             //add to monthly data
@@ -260,8 +260,8 @@ function libookin_render_royalty_summary_page() {
     }
 
     echo '</tbody></table><h2>Résumé global</h2><table class="widefat"><tbody>';
-    echo "<tr><td><strong>Total TTC</strong></td><td>€ " . number_format( ($total_sales + $total_vat - $total_stripe_fees), 2 ) . "</td></tr>";
-    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( ($total_sales), 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total TTC</strong></td><td>€ " . number_format( ($total_sales), 2 ) . "</td></tr>";
+    echo "<tr><td><strong>Total HT</strong></td><td>€ " . number_format( ($total_sales - $total_vat), 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Droits</strong></td><td>€ " . number_format( $total_royalties, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total Stripe</strong></td><td>€ " . number_format( $total_stripe_fees, 2 ) . "</td></tr>";
     echo "<tr><td><strong>Total TVA</strong></td><td>€ " . number_format( $total_vat, 2 ) . "</td></tr>";
