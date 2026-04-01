@@ -39,13 +39,63 @@
     width: 400px;
 }
 
-/* Status indicators */
-.status-badge {
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
+/* Modal styles */
+.libookin-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.libookin-modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 800px;
+    border-radius: 4px;
+    max-height: 80%;
+    overflow-y: auto;
+}
+
+.libookin-modal-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.libookin-modal-close:hover,
+.libookin-modal-close:focus {
+    color: #000;
+    text-decoration: none;
+}
+
+/* Scheduled and completed sections */
+.payout-scheduled,
+.payout-completed {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.payout-scheduled h2,
+.payout-completed h2 {
+    margin-top: 0;
+    color: #1d2327;
+}
+
+.payout-scheduled table,
+.payout-completed table {
+    margin-top: 15px;
 }
 
 .status-pending {

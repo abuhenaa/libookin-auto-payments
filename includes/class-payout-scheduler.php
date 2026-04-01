@@ -54,6 +54,7 @@ class Libookin_Payout_Scheduler {
 		add_action( 'libookin_process_scheduled_payouts', array( $this, 'process_scheduled_payouts' ) );
 		add_action( 'wp_ajax_trigger_manual_payout', array( $this, 'ajax_trigger_manual_payout' ) );
 		add_action( 'wp_ajax_get_payout_preview', array( $this, 'ajax_get_payout_preview' ) );
+		add_action( 'wp_ajax_trigger_daily_check', array( $this, 'ajax_trigger_daily_check' ) );
 	}
 
 	/**
@@ -291,8 +292,8 @@ class Libookin_Payout_Scheduler {
 		$period_end->modify('last day of -3 months');
 		$period_end->setTime(23,59,59);
 
-		// Create Stripe payout
-		$payout_result = $stripe_manager->create_payout(
+		// Create Stripe transfer
+		$transfer_result = $stripe_manager->create_transfer(
 			$stripe_account,
 			$amount,
 			array(
@@ -303,43 +304,43 @@ class Libookin_Payout_Scheduler {
 			)
 		);
 
-		if ( is_wp_error( $payout_result ) ) {
+		if ( is_wp_error( $transfer_result ) ) {
 			return array(
 				'success'    => false,
 				'vendor_id'  => $vendor_id,
 				'vendor_name' => $vendor['name'],
 				'amount'     => $amount,
-				'error'      => $payout_result->get_error_message(),
+				'error'      => $transfer_result->get_error_message(),
 			);
 		}
 
-		// Record payout in database
-		$payout_id = $wpdb->insert(
-			$wpdb->prefix . 'libookin_payouts',
+		// Record transfer in database
+		$transfer_id = $wpdb->insert(
+			$wpdb->prefix . 'libookin_transfers',
 			array(
 				'vendor_id'        => $vendor_id,
 				'amount'           => $amount,
 				'currency'         => 'EUR',
-				'stripe_payout_id' => $payout_result['payout_id'],
+				'stripe_transfer_id' => $transfer_result['transfer_id'],
 				'stripe_account_id' => $stripe_account,
-				'status'           => $payout_result['status'],
+				'status'           => $transfer_result['status'],
 				'period_start'     => $period_start->format( 'Y-m-d' ),
 				'period_end'       => $period_end->format( 'Y-m-d' ),
 			),
 			array( '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 
-		if ( $payout_id ) {
+		if ( $transfer_id ) {
 			// Mark royalties as paid
 			$stripe_manager->mark_royalties_as_paid(
 				$vendor_id,
-				$payout_result['payout_id'],
+				$transfer_result['transfer_id'],
 				$period_start->format( 'Y-m-d' ),
 				$period_end->format( 'Y-m-d' )
 			);
 
 			// Send vendor notification
-			$this->send_vendor_notification( $vendor, $payout_result, $period_start, $period_end );
+			$this->send_vendor_notification( $vendor, $transfer_result, $period_start, $period_end );
 		}
 
 		return array(
@@ -347,8 +348,8 @@ class Libookin_Payout_Scheduler {
 			'vendor_id'   => $vendor_id,
 			'vendor_name' => $vendor['name'],
 			'amount'      => $amount,
-			'payout_id'   => $payout_result['payout_id'],
-			'status'      => $payout_result['status'],
+			'transfer_id' => $transfer_result['transfer_id'],
+			'status'      => $transfer_result['status'],
 		);
 	}
 
@@ -511,27 +512,21 @@ class Libookin_Payout_Scheduler {
 	}
 
 	/**
-	 * Cancel scheduled payout batch
+	 * AJAX handler for daily check trigger
 	 *
 	 * @since 1.0.0
-	 * @return bool Success status.
 	 */
-	public function cancel_scheduled_batch() {
-		$batch_data = get_option( 'libookin_pending_payout_batch' );
+	public function ajax_trigger_daily_check() {
+		check_ajax_referer( 'libookin_auto_payments_nonce', 'nonce' );
 
-		if ( empty( $batch_data ) || 'scheduled' !== $batch_data['status'] ) {
-			return false;
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( __( 'You do not have permission to perform this action.', 'libookin-auto-payments' ) );
 		}
 
-		// Clear scheduled event
-		wp_clear_scheduled_hook( 'libookin_process_scheduled_payouts' );
+		$this->check_and_process_payouts();
 
-		// Update batch status
-		$batch_data['status']     = 'cancelled';
-		$batch_data['cancelled_at'] = current_time( 'mysql' );
-		update_option( 'libookin_cancelled_payout_batch', $batch_data );
-		delete_option( 'libookin_pending_payout_batch' );
-
-		return true;
+		wp_send_json_success( array(
+			'message' => __( 'Daily check completed.', 'libookin-auto-payments' ),
+		) );
 	}
 }

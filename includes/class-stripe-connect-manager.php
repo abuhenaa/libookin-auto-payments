@@ -250,15 +250,15 @@ class Libookin_Stripe_Connect_Manager {
 	}
 
 	/**
-	 * Create payout to vendor's bank account
+	 * Create transfer to vendor's connected account
 	 *
 	 * @since 1.0.0
 	 * @param string $account_id Stripe account ID.
-	 * @param float  $amount     Amount to payout in EUR.
-	 * @param array  $metadata   Additional metadata for the payout.
-	 * @return array|WP_Error Payout result or error.
+	 * @param float  $amount     Amount to transfer in EUR.
+	 * @param array  $metadata   Additional metadata for the transfer.
+	 * @return array|WP_Error Transfer result or error.
 	 */
-	public function create_payout( $account_id, $amount, $metadata = array() ) {
+	public function create_transfer( $account_id, $amount, $metadata = array() ) {
 		if ( empty( $this->stripe_secret_key ) ) {
 			return new WP_Error( 'stripe_not_configured', __( 'Stripe is not properly configured.', 'libookin-auto-payments' ) );
 		}
@@ -280,10 +280,10 @@ class Libookin_Stripe_Connect_Manager {
 			);
 
 			return array(
-				'success'   => true,
-				'payout_id' => $transfer->id,
-				'amount'    => $amount,
-				'status'    => $transfer->status,
+				'success'    => true,
+				'transfer_id' => $transfer->id,
+				'amount'     => $amount,
+				'status'     => $transfer->status,
 				'arrival_date' => $transfer->arrival_date,
 			);
 
@@ -427,57 +427,35 @@ class Libookin_Stripe_Connect_Manager {
 	}
 
 	/**
-	 * Get vendor's pending royalties from database
-	 *
-	 * @since 1.0.0
-	 * @param int $vendor_id The vendor user ID.
-	 * @return float Total pending royalties.
-	 */
-	public function get_vendor_pending_royalties( $vendor_id ) {
-		global $wpdb;
-
-		$result = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT SUM(royalty_amount) FROM {$wpdb->prefix}libookin_royalties 
-				WHERE vendor_id = %d AND payout_status = 'pending'",
-				$vendor_id
-			)
-		);
-
-		return floatval( $result );
-	}
-
-	/**
 	 * Mark royalties as paid
 	 *
 	 * @since 1.0.0
-	 * @param int    $vendor_id      The vendor user ID.
-	 * @param string $payout_id      Stripe payout ID.
-	 * @param string $period_start   Period start date.
-	 * @param string $period_end     Period end date.
-	 * @return bool Success status.
+	 * @param int    $vendor_id    The vendor user ID.
+	 * @param string $transfer_id  The Stripe transfer ID.
+	 * @param string $period_start The period start date.
+	 * @param string $period_end   The period end date.
 	 */
-	public function mark_royalties_as_paid( $vendor_id, $payout_id, $period_start, $period_end ) {
+	public function mark_royalties_as_paid( $vendor_id, $transfer_id, $period_start, $period_end ) {
 		global $wpdb;
 
-		$updated = $wpdb->update(
+		$wpdb->update(
 			$wpdb->prefix . 'libookin_royalties',
 			array(
 				'payout_status'    => 'paid',
-				'stripe_payout_id' => $payout_id,
+				'stripe_payout_id' => $transfer_id,
 				'payout_date'      => current_time( 'mysql' ),
 			),
 			array(
 				'vendor_id'     => $vendor_id,
 				'payout_status' => 'pending',
-				'created_at >= ' => $period_start,
-        		'created_at <= ' => $period_end,
+				'created_at'    => array(
+					'compare' => 'BETWEEN',
+					'value'   => array( $period_start . ' 00:00:00', $period_end . ' 23:59:59' ),
+				),
 			),
 			array( '%s', '%s', '%s' ),
-			array( '%d', '%s', '%s', '%s' )
+			array( '%d', '%s', '%s' )
 		);
-
-		return false !== $updated;
 	}
 
 	/**

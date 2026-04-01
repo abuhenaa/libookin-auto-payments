@@ -6,11 +6,81 @@
     'use strict';
 
     $(document).ready(function() {
+        // Trigger daily check
+        $('#trigger-daily-check').on('click', function(e) {
+            e.preventDefault();
+            
+            if (!confirm('Are you sure you want to run the daily payout check?')) {
+                return;
+            }
+            
+            const button = $(this);
+            button.prop('disabled', true).text('Running...');
+            
+            $.ajax({
+                url: libookin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'trigger_daily_check',
+                    nonce: libookin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('Daily check completed. Refresh the page to see results.');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while processing the request.');
+                },
+                complete: function() {
+                    button.prop('disabled', false).text('Run Daily Check');
+                }
+            });
+        });
+
+        // Review payout vendors
+        $('#review-payout').on('click', function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                url: libookin_ajax.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'get_payout_preview',
+                    nonce: libookin_ajax.nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        displayPayoutModal(response.data);
+                    } else {
+                        alert('Error: ' + response.data);
+                    }
+                },
+                error: function() {
+                    alert('An error occurred while fetching preview.');
+                }
+            });
+        });
+
+        // Modal close
+        $('.libookin-modal-close').on('click', function() {
+            $('.libookin-modal').hide();
+        });
+
+        $(window).on('click', function(e) {
+            if ($(e.target).hasClass('libookin-modal')) {
+                $('.libookin-modal').hide();
+            }
+        });
+
         // Trigger manual payout
         $('#trigger-manual-payout').on('click', function(e) {
             e.preventDefault();
             
-            if (!confirm('Are you sure you want to trigger manual payouts? This will process all eligible vendors.')) {
+            if (!confirm('Are you sure you want to trigger manual transfers? This will process all eligible vendors.')) {
                 return;
             }
             
@@ -26,7 +96,7 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        alert('Payout batch scheduled successfully for ' + response.data.vendor_count + ' vendors (€' + response.data.total_amount.toFixed(2) + ')');
+                        alert('Transfer batch scheduled successfully for ' + response.data.vendor_count + ' vendors (€' + response.data.total_amount.toFixed(2) + ')');
                         location.reload();
                     } else {
                         alert('Error: ' + response.data);
@@ -36,40 +106,16 @@
                     alert('An error occurred while processing the request.');
                 },
                 complete: function() {
-                    button.prop('disabled', false).text('Trigger Manual Payout');
+                    button.prop('disabled', false).text('Trigger Manual Transfer');
                 }
             });
         });
 
-        // Get payout preview
-        $('#get-payout-preview').on('click', function(e) {
-            e.preventDefault();
-            
-            $.ajax({
-                url: libookin_ajax.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'get_payout_preview',
-                    nonce: libookin_ajax.nonce
-                },
-                success: function(response) {
-                    if (response.success) {
-                        displayPayoutPreview(response.data);
-                    } else {
-                        alert('Error: ' + response.data);
-                    }
-                },
-                error: function() {
-                    alert('An error occurred while fetching preview.');
-                }
-            });
-        });
-
-        function displayPayoutPreview(data) {
-            let html = '<h3>Payout Preview</h3>';
+        function displayPayoutModal(data) {
+            let html = '<h3>Transfer Preview</h3>';
             html += '<p>Total vendors: ' + data.vendor_count + '</p>';
             html += '<p>Total amount: €' + data.total_amount.toFixed(2) + '</p>';
-            html += '<p>Next payout date: ' + data.next_payout_date + '</p>';
+            html += '<p>Next transfer date: ' + data.next_payout_date + '</p>';
             
             if (data.vendors.length > 0) {
                 html += '<table class="widefat"><thead><tr>';
@@ -88,7 +134,8 @@
                 html += '</tbody></table>';
             }
             
-            $('#payout-preview-container').html(html);
+            $('#payout-vendor-list').html(html);
+            $('#payout-review-modal').show();
         }
     });
 
