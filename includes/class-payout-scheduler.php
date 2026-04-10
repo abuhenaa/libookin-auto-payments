@@ -281,7 +281,6 @@ class Libookin_Payout_Scheduler {
 		$vendor_id      = $vendor['vendor_id'];
 		$amount         = $vendor['total_pending'];
 		$stripe_account = $vendor['stripe_account_id'];
-
 		$current_date = Libookin_Auto_Payments::$current_date; 
 
 		$period_start = clone $current_date;
@@ -316,7 +315,7 @@ class Libookin_Payout_Scheduler {
 
 		// Record transfer in database
 		$transfer_id = $wpdb->insert(
-			$wpdb->prefix . 'libookin_transfers',
+			$wpdb->prefix . 'libookin_payouts',
 			array(
 				'vendor_id'        => $vendor_id,
 				'amount'           => $amount,

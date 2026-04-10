@@ -129,7 +129,6 @@ class Libookin_Stripe_Connect_Manager {
 			);
 
 		} catch ( \Stripe\Exception\ApiErrorException $e ) {
-			error_log( 'Stripe error: ' . $e->getMessage() );
 			return new WP_Error( 'stripe_error', $e->getMessage() );
 		}
 	}
@@ -157,7 +156,6 @@ class Libookin_Stripe_Connect_Manager {
 				'expires_at' => $link->expires_at,
 			);
 		} catch( \Stripe\Exception\ApiErrorException $e ){
-			error_log( 'Stripe error: ' . $e->getMessage() );
 			return new WP_Error( 'stripe_error', $e->getMessage() );
 		}
 	}
