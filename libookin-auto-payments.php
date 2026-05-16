@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Libookin Auto Payments
  * Description: Automated Stripe Connect payments system for Libookin authors and publishers with royalty management.
- * Version: 1.1.2
+ * Version: 1.1.3
  * Author: Abu Hena
  * Author URI: https://profiles.wordpress.org/codexa
  * Text Domain: libookin-auto-payments
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'LIBOOKIN_AUTO_PAYMENTS_VERSION', '1.0.0' );
+define( 'LIBOOKIN_AUTO_PAYMENTS_VERSION', '1.1.3' );
 define( 'LIBOOKIN_AUTO_PAYMENTS_PLUGIN_FILE', __FILE__ );
 define( 'LIBOOKIN_AUTO_PAYMENTS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LIBOOKIN_AUTO_PAYMENTS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

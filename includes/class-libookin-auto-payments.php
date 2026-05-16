@@ -444,9 +444,11 @@ class Libookin_Auto_Payments {
         // Create database tables
         self::create_tables();
 
-// Schedule cron events
+// Schedule cron events (daily at next site midnight so the 1st–3rd window is hit reliably).
         if ( ! wp_next_scheduled( 'libookin_daily_payout_check' ) ) {
-            wp_schedule_event( time(), 'daily', 'libookin_daily_payout_check' );
+            $timezone = wp_timezone();
+            $first_run = new DateTime( 'tomorrow midnight', $timezone );
+            wp_schedule_event( $first_run->getTimestamp(), 'daily', 'libookin_daily_payout_check' );
         }
 
 // Check for WooCommerce dependency

@@ -36,6 +36,88 @@ class Libookin_Payout_Scheduler {
 	const PAYOUT_FREQUENCY_MONTHS = 2;
 
 	/**
+	 * Next scheduled payout date (1st of next month, or next Monday if the 1st is a weekend).
+	 *
+	 * @since 1.0.0
+	 * @param DateTime|null $from_date Starting date (defaults to plugin current date).
+	 * @return DateTime Next payout date at 00:00:00.
+	 */
+	public static function get_next_payout_datetime( $from_date = null ) {
+		$from = $from_date ? clone $from_date : clone Libookin_Auto_Payments::$current_date;
+		$next = clone $from;
+		$next->modify( 'first day of next month' );
+		$next->setTime( 0, 0, 0 );
+
+		$day_of_week = (int) $next->format( 'N' );
+		if ( $day_of_week >= 6 ) {
+			$next->add( new DateInterval( 'P' . ( 8 - $day_of_week ) . 'D' ) );
+		}
+
+		return $next;
+	}
+
+	/**
+	 * Payout date used for maturity: today on payout day, otherwise the next scheduled payout.
+	 *
+	 * @since 1.0.0
+	 * @param DateTime|null $from_date Starting date (defaults to plugin current date).
+	 * @return DateTime Reference payout date.
+	 */
+	public static function get_payout_reference_date( $from_date = null ) {
+		$from = $from_date ? clone $from_date : clone Libookin_Auto_Payments::$current_date;
+		$from->setTime( 0, 0, 0 );
+
+		// During the 1st–3rd window, maturity is always based on this month's payout (the 1st).
+		if ( self::is_payout_window( $from ) ) {
+			$anchor = clone $from;
+			$anchor->modify( 'first day of this month' );
+			return $anchor;
+		}
+
+		return self::get_next_payout_datetime( $from );
+	}
+
+	/**
+	 * Last moment a royalty was created and still qualifies for the reference payout (2 full months before payout month).
+	 *
+	 * Example: payout on 1 June → includes earnings through 31 March (April + May waiting months).
+	 *
+	 * @since 1.0.0
+	 * @param DateTime|null $reference_date Payout date (defaults to get_payout_reference_date()).
+	 * @return DateTime Maturity cutoff datetime.
+	 */
+	public static function get_royalty_maturity_cutoff( $reference_date = null ) {
+		$payout_date = $reference_date ? clone $reference_date : self::get_payout_reference_date();
+		$cutoff      = clone $payout_date;
+		$cutoff->modify( 'last day of -3 months' );
+		$cutoff->setTime( 23, 59, 59 );
+
+		return $cutoff;
+	}
+
+	/**
+	 * Sum of mature pending royalties for a vendor (accumulates across periods below minimum).
+	 *
+	 * @since 1.0.0
+	 * @param int $vendor_id Vendor user ID.
+	 * @return float Total mature pending amount.
+	 */
+	public static function get_vendor_mature_pending_total( $vendor_id ) {
+		global $wpdb;
+
+		$cutoff = self::get_royalty_maturity_cutoff()->format( 'Y-m-d H:i:s' );
+
+		return (float) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COALESCE( SUM( royalty_amount ), 0 ) FROM {$wpdb->prefix}libookin_royalties
+				WHERE vendor_id = %d AND payout_status = 'pending' AND created_at <= %s",
+				$vendor_id,
+				$cutoff
+			)
+		);
+	}
+
+	/**
 	 * Constructor
 	 *
 	 * @since 1.0.0
@@ -63,15 +145,19 @@ class Libookin_Payout_Scheduler {
 	 * @since 1.0.0
 	 */
 	public function check_and_process_payouts() {
-		$today = new DateTime();
-		
-		// Check if today is the 1st of the month or next working day
-		if ( ! $this->is_payout_day( $today ) ) {
+		$today = new DateTime( 'now', wp_timezone() );
+
+		// Run on the 1st, 2nd, or 3rd so a missed cron on the 1st can still trigger.
+		if ( ! self::is_payout_window( $today ) ) {
+			return;
+		}
+
+		if ( $this->payout_already_handled_this_month( $today ) ) {
 			return;
 		}
 
 		$eligible_vendors = $this->get_eligible_vendors();
-		
+
 		if ( empty( $eligible_vendors ) ) {
 			return;
 		}
@@ -81,13 +167,54 @@ class Libookin_Payout_Scheduler {
 	}
 
 	/**
-	 * Check if today is a valid payout day
+	 * Whether the daily payout check may run (1st–3rd of the month).
+	 *
+	 * @since 1.0.0
+	 * @param DateTime $date The date to check.
+	 * @return bool True if inside the payout window.
+	 */
+	public static function is_payout_window( DateTime $date ) {
+		$day_of_month = (int) $date->format( 'd' );
+
+		return $day_of_month >= 1 && $day_of_month <= 3;
+	}
+
+	/**
+	 * Whether a payout batch was already scheduled or completed this calendar month.
+	 *
+	 * @since 1.0.0
+	 * @param DateTime $date Reference date.
+	 * @return bool True if this month is already handled.
+	 */
+	private function payout_already_handled_this_month( DateTime $date ) {
+		$month_key = $date->format( 'Y-m' );
+
+		$pending = get_option( 'libookin_pending_payout_batch', array() );
+		if ( ! empty( $pending['status'] ) && in_array( $pending['status'], array( 'scheduled', 'processing' ), true ) ) {
+			return true;
+		}
+
+		$completed = get_option( 'libookin_completed_payout_batch', array() );
+		if ( ! empty( $completed['completed_at'] ) ) {
+			$completed_month = gmdate( 'Y-m', strtotime( $completed['completed_at'] ) );
+			if ( $completed_month === $month_key ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if a date is the nominal payout day (1st, or next business day if 1st is a weekend).
+	 *
+	 * Used for display/scheduling; automated checks use is_payout_window().
 	 *
 	 * @since 1.0.0
 	 * @param DateTime $date The date to check.
 	 * @return bool True if it's a payout day.
 	 */
-	private function is_payout_day( DateTime $date ) {
+	public static function is_payout_day( DateTime $date ) {
 		$day_of_month = intval( $date->format( 'd' ) );
 		$day_of_week  = intval( $date->format( 'N' ) ); // 1 = Monday, 7 = Sunday
 
@@ -126,21 +253,9 @@ class Libookin_Payout_Scheduler {
 	public function get_eligible_vendors() {
 		global $wpdb;
 
-		$current_date = Libookin_Auto_Payments::$current_date;
+		$maturity_cutoff = self::get_royalty_maturity_cutoff()->format( 'Y-m-d H:i:s' );
 
-		// Define the start and end of the month exactly two months ago
-		$start_date = clone $current_date;
-		$start_date->modify('first day of -3 months');
-		$start_date->setTime(0, 0, 0);
-		$end_date = clone $current_date;
-		$end_date->modify('last day of -3 months');
-		$end_date->setTime(23, 59, 59);
-
-		// Get formatted timestamps
-		$start = $start_date->format('Y-m-d H:i:s');
-		$end   = $end_date->format('Y-m-d H:i:s');
-
-		// Get vendors with pending royalties >= €15 and older than 2 months
+		// All mature pending royalties (carryover from periods that did not reach the minimum).
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT 
@@ -149,20 +264,20 @@ class Libookin_Payout_Scheduler {
 					u.display_name,
 					SUM(r.royalty_amount) as total_pending,
 					MIN(r.created_at) as oldest_royalty,
+					MAX(r.created_at) as newest_royalty,
 					COUNT(r.id) as royalty_count,
 					um.meta_value as stripe_account_id
 				FROM {$wpdb->prefix}libookin_royalties r
 				INNER JOIN {$wpdb->users} u ON r.vendor_id = u.ID
 				LEFT JOIN {$wpdb->usermeta} um ON r.vendor_id = um.user_id AND um.meta_key = 'stripe_connect_account_id'
 				WHERE r.payout_status = 'pending' 
-				AND r.created_at BETWEEN %s AND %s
+				AND r.created_at <= %s
 				AND um.meta_value IS NOT NULL
 				AND um.meta_value != ''
 				GROUP BY r.vendor_id
 				HAVING total_pending >= %f
 				ORDER BY oldest_royalty ASC",
-				$start,
-				$end,
+				$maturity_cutoff,
 				self::MINIMUM_PAYOUT_AMOUNT
 			)
 		);
@@ -200,7 +315,7 @@ class Libookin_Payout_Scheduler {
 		$total_amount  = array_sum( array_column( $eligible_vendors, 'total_pending' ) );
 		$vendor_count  = count( $eligible_vendors );
 		//$scheduled_time = time() + ( 1 * MINUTE_IN_SECONDS ); // 1 minute delay FOR TESTING PURPOSES
-		$scheduled_time = time() + ( 6 * HOUR_IN_SECONDS );
+		$scheduled_time = time() + ( 2 * HOUR_IN_SECONDS );
 
 		// Store batch data for processing
 		update_option( 'libookin_pending_payout_batch', array(
@@ -281,15 +396,24 @@ class Libookin_Payout_Scheduler {
 		$vendor_id      = $vendor['vendor_id'];
 		$amount         = $vendor['total_pending'];
 		$stripe_account = $vendor['stripe_account_id'];
-		$current_date = Libookin_Auto_Payments::$current_date; 
+		$maturity_cutoff = self::get_royalty_maturity_cutoff()->format( 'Y-m-d H:i:s' );
 
-		$period_start = clone $current_date;
-		$period_start->modify('first day of -3 months');
-		$period_start->setTime(0,0,0);
+		$period_bounds = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT MIN( created_at ) AS period_start, MAX( created_at ) AS period_end
+				FROM {$wpdb->prefix}libookin_royalties
+				WHERE vendor_id = %d AND payout_status = 'pending' AND created_at <= %s",
+				$vendor_id,
+				$maturity_cutoff
+			)
+		);
 
-		$period_end = clone $current_date;
-		$period_end->modify('last day of -3 months');
-		$period_end->setTime(23,59,59);
+		$period_start = $period_bounds && $period_bounds->period_start
+			? gmdate( 'Y-m-d', strtotime( $period_bounds->period_start ) )
+			: self::get_royalty_maturity_cutoff()->format( 'Y-m-d' );
+		$period_end   = $period_bounds && $period_bounds->period_end
+			? gmdate( 'Y-m-d', strtotime( $period_bounds->period_end ) )
+			: self::get_royalty_maturity_cutoff()->format( 'Y-m-d' );
 
 		// Create Stripe transfer
 		$transfer_result = $stripe_manager->create_transfer(
@@ -297,8 +421,8 @@ class Libookin_Payout_Scheduler {
 			$amount,
 			array(
 				'vendor_id'    => $vendor_id,
-				'period_start' => $period_start->format( 'Y-m-d' ),
-				'period_end'   => $period_end->format( 'Y-m-d' ),
+				'period_start' => $period_start,
+				'period_end'   => $period_end,
 				'royalty_count' => $vendor['royalty_count'],
 			)
 		);
@@ -323,8 +447,8 @@ class Libookin_Payout_Scheduler {
 				'stripe_transfer_id' => $transfer_result['transfer_id'],
 				'stripe_account_id' => $stripe_account,
 				'status'           => $transfer_result['status'],
-				'period_start'     => $period_start->format( 'Y-m-d' ),
-				'period_end'       => $period_end->format( 'Y-m-d' ),
+				'period_start'     => $period_start,
+				'period_end'       => $period_end,
 			),
 			array( '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
@@ -334,12 +458,13 @@ class Libookin_Payout_Scheduler {
 			$stripe_manager->mark_royalties_as_paid(
 				$vendor_id,
 				$transfer_result['transfer_id'],
-				$period_start->format( 'Y-m-d' ),
-				$period_end->format( 'Y-m-d' )
+				$maturity_cutoff
 			);
 
 			// Send vendor notification
-			$this->send_vendor_notification( $vendor, $transfer_result, $period_start, $period_end );
+			$period_start_dt = DateTime::createFromFormat( 'Y-m-d', $period_start ) ?: self::get_royalty_maturity_cutoff();
+			$period_end_dt   = DateTime::createFromFormat( 'Y-m-d', $period_end ) ?: self::get_royalty_maturity_cutoff();
+			$this->send_vendor_notification( $vendor, $transfer_result, $period_start_dt, $period_end_dt );
 		}
 
 		return array(
@@ -455,16 +580,7 @@ class Libookin_Payout_Scheduler {
 	 * @return string Next payout date.
 	 */
 	private function get_next_payout_date() {
-		$next_month = new DateTime( 'first day of next month' );
-		
-		// If it falls on weekend, move to next Monday
-		$day_of_week = intval( $next_month->format( 'N' ) );
-		if ( $day_of_week >= 6 ) {
-			$days_to_add = 8 - $day_of_week; // Move to next Monday
-			$next_month->add( new DateInterval( "P{$days_to_add}D" ) );
-		}
-
-		return $next_month->format( 'Y-m-d' );
+		return self::get_next_payout_datetime()->format( 'Y-m-d' );
 	}
 
 	/**

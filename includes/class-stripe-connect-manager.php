@@ -425,34 +425,26 @@ class Libookin_Stripe_Connect_Manager {
 	}
 
 	/**
-	 * Mark royalties as paid
+	 * Mark mature pending royalties as paid (includes carryover from prior periods).
 	 *
 	 * @since 1.0.0
-	 * @param int    $vendor_id    The vendor user ID.
-	 * @param string $transfer_id  The Stripe transfer ID.
-	 * @param string $period_start The period start date.
-	 * @param string $period_end   The period end date.
+	 * @param int    $vendor_id        The vendor user ID.
+	 * @param string $transfer_id      The Stripe transfer ID.
+	 * @param string $maturity_cutoff  Datetime string: royalties on or before this are marked paid.
 	 */
-	public function mark_royalties_as_paid( $vendor_id, $transfer_id, $period_start, $period_end ) {
+	public function mark_royalties_as_paid( $vendor_id, $transfer_id, $maturity_cutoff ) {
 		global $wpdb;
 
-		$wpdb->update(
-			$wpdb->prefix . 'libookin_royalties',
-			array(
-				'payout_status'    => 'paid',
-				'stripe_payout_id' => $transfer_id,
-				'payout_date'      => current_time( 'mysql' ),
-			),
-			array(
-				'vendor_id'     => $vendor_id,
-				'payout_status' => 'pending',
-				'created_at'    => array(
-					'compare' => 'BETWEEN',
-					'value'   => array( $period_start . ' 00:00:00', $period_end . ' 23:59:59' ),
-				),
-			),
-			array( '%s', '%s', '%s' ),
-			array( '%d', '%s', '%s' )
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$wpdb->prefix}libookin_royalties
+				SET payout_status = 'paid', stripe_payout_id = %s, payout_date = %s
+				WHERE vendor_id = %d AND payout_status = 'pending' AND created_at <= %s",
+				$transfer_id,
+				current_time( 'mysql' ),
+				$vendor_id,
+				$maturity_cutoff
+			)
 		);
 	}
 
