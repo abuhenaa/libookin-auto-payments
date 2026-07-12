@@ -67,6 +67,11 @@ class Libookin_Admin_Interface {
 		$pending_batch = get_option( 'libookin_pending_payout_batch' );
 		$completed_batch = get_option( 'libookin_completed_payout_batch' );
 		$cancelled_batch = get_option( 'libookin_cancelled_payout_batch' );
+
+		if ( 0 === $preview['vendor_count'] && $pending_batch ) {
+			delete_option( 'libookin_pending_payout_batch' );
+			$pending_batch = false;
+		}
 		
 		?>
 		<div class="wrap">

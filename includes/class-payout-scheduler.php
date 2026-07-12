@@ -159,6 +159,7 @@ class Libookin_Payout_Scheduler {
 		$eligible_vendors = $this->get_eligible_vendors();
 
 		if ( empty( $eligible_vendors ) ) {
+			delete_option( 'libookin_pending_payout_batch' );
 			return;
 		}
 
@@ -437,35 +438,37 @@ class Libookin_Payout_Scheduler {
 			);
 		}
 
-		// Record transfer in database
-		$transfer_id = $wpdb->insert(
+		// Record transfer in the live payout table schema.
+		$inserted = $wpdb->insert(
 			$wpdb->prefix . 'libookin_payouts',
 			array(
-				'vendor_id'        => $vendor_id,
-				'amount'           => $amount,
-				'currency'         => 'EUR',
-				'stripe_transfer_id' => $transfer_result['transfer_id'],
+				'vendor_id'         => $vendor_id,
+				'amount'            => $amount,
+				'currency'          => 'EUR',
+				'stripe_payout_id'  => $transfer_result['transfer_id'],
 				'stripe_account_id' => $stripe_account,
-				'status'           => $transfer_result['status'],
-				'period_start'     => $period_start,
-				'period_end'       => $period_end,
+				'status'            => $transfer_result['status'],
+				'period_start'      => $period_start,
+				'period_end'        => $period_end,
 			),
 			array( '%d', '%f', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 
-		if ( $transfer_id ) {
-			// Mark royalties as paid
-			$stripe_manager->mark_royalties_as_paid(
-				$vendor_id,
-				$transfer_result['transfer_id'],
-				$maturity_cutoff
-			);
-
-			// Send vendor notification
-			$period_start_dt = DateTime::createFromFormat( 'Y-m-d', $period_start ) ?: self::get_royalty_maturity_cutoff();
-			$period_end_dt   = DateTime::createFromFormat( 'Y-m-d', $period_end ) ?: self::get_royalty_maturity_cutoff();
-			$this->send_vendor_notification( $vendor, $transfer_result, $period_start_dt, $period_end_dt );
+		if ( false === $inserted ) {
+			error_log( 'Libookin Auto Payments: failed to insert payout for vendor ' . $vendor_id . ' - ' . $wpdb->last_error );
 		}
+
+		// Mark royalties as paid even if DB insert failed (transfer has been created)
+		$stripe_manager->mark_royalties_as_paid(
+			$vendor_id,
+			$transfer_result['transfer_id'],
+			$maturity_cutoff
+		);
+
+		// Send vendor notification
+		$period_start_dt = DateTime::createFromFormat( 'Y-m-d', $period_start ) ?: self::get_royalty_maturity_cutoff();
+		$period_end_dt   = DateTime::createFromFormat( 'Y-m-d', $period_end ) ?: self::get_royalty_maturity_cutoff();
+		$this->send_vendor_notification( $vendor, $transfer_result, $period_start_dt, $period_end_dt );
 
 		return array(
 			'success'     => true,
@@ -524,7 +527,7 @@ class Libookin_Payout_Scheduler {
 			$vendor['total_pending'],
 			$period_start->format( 'Y-m-d' ),
 			$period_end->format( 'Y-m-d' ),
-			$payout_result['payout_id']
+			$payout_result['transfer_id']
 		);
 	}
 

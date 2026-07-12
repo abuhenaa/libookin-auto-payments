@@ -278,10 +278,11 @@ class Libookin_Stripe_Connect_Manager {
 			);
 
 			return array(
-				'success'    => true,
-				'transfer_id' => $transfer->id,
-				'amount'     => $amount,
-				'status'     => $transfer->status,
+				'success'      => true,
+				'transfer_id'  => $transfer->id,
+				'payout_id'    => $transfer->id,
+				'amount'       => $amount,
+				'status'       => $transfer->status,
 				'arrival_date' => $transfer->arrival_date,
 			);
 
@@ -435,17 +436,23 @@ class Libookin_Stripe_Connect_Manager {
 	public function mark_royalties_as_paid( $vendor_id, $transfer_id, $maturity_cutoff ) {
 		global $wpdb;
 
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$wpdb->prefix}libookin_royalties
-				SET payout_status = 'paid', stripe_payout_id = %s, payout_date = %s
-				WHERE vendor_id = %d AND payout_status = 'pending' AND created_at <= %s",
-				$transfer_id,
-				current_time( 'mysql' ),
-				$vendor_id,
-				$maturity_cutoff
-			)
+		$sql = $wpdb->prepare(
+			"UPDATE {$wpdb->prefix}libookin_royalties
+			SET payout_status = 'paid', stripe_payout_id = %s, payout_date = %s
+			WHERE vendor_id = %d AND payout_status = 'pending' AND created_at <= %s",
+			$transfer_id,
+			current_time( 'mysql' ),
+			$vendor_id,
+			$maturity_cutoff
 		);
+
+		$result = $wpdb->query( $sql );
+
+		if ( false === $result ) {
+			error_log( 'Libookin Auto Payments: failed to mark royalties paid for vendor ' . $vendor_id . ' - ' . $wpdb->last_error );
+		} else {
+			error_log( 'Libookin Auto Payments: marked royalties paid for vendor ' . $vendor_id . ', affected rows: ' . $result );
+		}
 	}
 
 	/**
